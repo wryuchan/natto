@@ -2,6 +2,8 @@ import * as THREE from 'three';
 
 import { STATIONS } from '../core/game-state.js';
 import { createCutStation } from '../stations/cut-station.js';
+import { createMixStation } from '../stations/mix-station.js';
+import { createServeStation } from '../stations/serve-station.js';
 import { createPointerRouter } from '../systems/input.js';
 import {
   createRenderer,
@@ -123,9 +125,19 @@ export function createKitchenScene(canvas, options = {}) {
   scene.add(fillLight);
 
   const providedStations = Array.isArray(options.stations) ? options.stations : null;
-  const stationList = providedStations ?? STATION_IDS.map((id) => id === STATIONS.CUT
-    ? createCutStation({ camera, materials, dispatch: options.dispatch })
-    : createPlaceholderStation(id, materials));
+  const stationList = providedStations ?? STATION_IDS.map((id) => {
+    const stationContext = {
+      camera,
+      materials,
+      dispatch: options.dispatch,
+      playEffect: options.playEffect,
+      qualityProfile: profile,
+      now: options.now,
+    };
+    if (id === STATIONS.CUT) return createCutStation(stationContext);
+    if (id === STATIONS.MIX) return createMixStation(stationContext);
+    return createServeStation(stationContext);
+  });
   if (stationList.length !== STATION_IDS.length || stationList.some((station) => !validateStation(station))) {
     throw new TypeError('Kitchen stations must implement the station adapter contract');
   }

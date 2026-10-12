@@ -23,21 +23,25 @@
           <button type="button" data-action="language" aria-label="表示言語を切り替える">English</button>
           <button type="button" data-action="mute" aria-label="効果音のオンとオフを切り替える">音を消す</button>
           <button type="button" data-action="help" aria-label="操作ガイドを開く">遊び方</button>
+          <button type="button" data-action="collection">称号一覧</button>
         </div>
       </header>
 
-      <section class="game-stage" aria-label="調理画面">
+      <section class="game-stage" data-view="cooking" aria-label="調理画面">
         <canvas id="game-canvas" tabindex="0" aria-label="納豆を調理する3D操作画面"></canvas>
         <p id="app-status" class="sr-only" role="status" aria-live="polite"></p>
         <p class="sr-only" role="alert" aria-live="assertive" data-error-status></p>
       </section>
 
-      <nav class="station-nav" aria-label="調理ステーション">
+      <nav class="station-nav" data-view="cooking" aria-label="調理ステーション">
         <button type="button" data-station="cut">切る</button>
         <button type="button" data-station="mix">混ぜる</button>
         <button type="button" data-station="serve">盛る</button>
       </nav>
-      <button class="finish-button" type="button" data-action="finish" aria-label="調理を完成する">完成</button>
+      <button class="finish-button" data-view="cooking" type="button" data-action="finish" aria-label="調理を完成する">完成</button>
+
+      <section id="result-view" class="view-panel" data-view="result" hidden aria-live="polite"></section>
+      <section id="collection-view" class="view-panel" data-view="collection" hidden></section>
 
       <dialog id="app-dialog" aria-labelledby="dialog-title" aria-describedby="dialog-body">
         <form method="dialog" class="dialog-card">

@@ -177,7 +177,7 @@ export function reduceGameState(state, event) {
     }
 
     case 'TRANSFER_TO_RICE': {
-      const hasBowlContents = state.ingredients.natto.inBowl || state.ingredients.greenOnion.inBowl;
+      const hasBowlContents = state.ingredients.natto.inBowl;
       if (
         hasRiceTransfer(state)
         || !hasBowlContents

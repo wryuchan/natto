@@ -32,6 +32,7 @@ export function deriveShellModel(state, settings = {}, locale = 'en') {
       language: t('shell.language'),
       mute: t(settings.muted ? 'shell.unmute' : 'shell.mute'),
       help: t('shell.help'),
+      collection: t('shell.collection'),
       finish: t('shell.finish'),
       finishDisabled: state.phase !== PHASES.COOKING || state.serving.transferredRatio <= 0,
     },
@@ -59,6 +60,7 @@ export function createShell(root, callbacks = {}) {
   const languageButton = root.querySelector('[data-action="language"]');
   const muteButton = root.querySelector('[data-action="mute"]');
   const helpButton = root.querySelector('[data-action="help"]');
+  const collectionButton = root.querySelector('[data-action="collection"]');
   const finishButton = root.querySelector('[data-action="finish"]');
   const status = root.querySelector('#app-status');
   const dialog = root.querySelector('#app-dialog');
@@ -67,6 +69,7 @@ export function createShell(root, callbacks = {}) {
   const acceptButton = root.querySelector('[data-dialog="accept"]');
   const cancelButton = root.querySelector('[data-dialog="cancel"]');
   const removers = [];
+  const views = [...root.querySelectorAll('[data-view]')];
   let pendingAction = null;
   let restoreTarget = null;
 
@@ -82,6 +85,7 @@ export function createShell(root, callbacks = {}) {
   listen(languageButton, 'click', (event) => callbacks.toggleLocale?.(event.currentTarget));
   listen(muteButton, 'click', (event) => callbacks.toggleMute?.(event.currentTarget));
   listen(helpButton, 'click', (event) => callbacks.help?.(event.currentTarget));
+  listen(collectionButton, 'click', (event) => callbacks.collection?.(event.currentTarget));
   listen(finishButton, 'click', (event) => callbacks.finish?.(event.currentTarget));
 
   const closeDialog = () => {
@@ -128,6 +132,7 @@ export function createShell(root, callbacks = {}) {
       if (languageButton) languageButton.textContent = model.controls.language;
       if (muteButton) muteButton.textContent = model.controls.mute;
       if (helpButton) helpButton.textContent = model.controls.help;
+      if (collectionButton) collectionButton.textContent = model.controls.collection;
       if (finishButton) {
         finishButton.textContent = model.controls.finish;
         finishButton.disabled = model.controls.finishDisabled;
@@ -136,6 +141,9 @@ export function createShell(root, callbacks = {}) {
       if (documentElement) documentElement.lang = model.locale;
     },
     showConfirmation: showDialog,
+    showView(view) {
+      for (const element of views) element.hidden = element.dataset.view !== view;
+    },
     showTutorial(tutorial, onComplete, opener) {
       let pageIndex = 0;
       const showPage = () => {
