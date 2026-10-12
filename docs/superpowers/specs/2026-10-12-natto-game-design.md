@@ -7,7 +7,7 @@
 
 ## 1. 目的
 
-納豆、ネギ、醤油、からし、卵を自分の手で調理し、盛り付け済みのご飯へかけて完成させる短時間の3Dブラウザゲームを作る。プレイヤーは調理結果を4項目で評価され、さまざまな作り方を試して全16種類の称号を集める。
+納豆、ネギ、醤油、からし、卵を自分の手で調理し、盛り付け済みのご飯へかけて完成させる短時間の3Dブラウザゲームを作る。プレイヤーは調理結果を4項目で評価され、さまざまな作り方を試して全20種類の称号を集める。
 
 中心となる楽しさは、正解を一つに限定しない調理シミュレーションである。粒納豆とひき割り納豆、卵ありと卵なしのいずれにも高評価ルートを用意する。極端な調理には通常評価とは別の特殊称号を用意し、失敗も発見として楽しめるようにする。
 
@@ -17,7 +17,7 @@
 - 初見でも短いガイドだけで「切る・混ぜる・盛る」を完了できる。
 - 1プレイはおおむね2〜5分で完結する。
 - 操作結果が見た目と採点に一貫して反映される。
-- 16称号をすべて実際の操作で獲得できる。
+- 20称号をすべて実際の操作で獲得できる。
 - 日本語と英語で同一のゲーム内容を遊べる。
 - バックエンドや個人情報の送信なしで動作する。
 
@@ -31,7 +31,7 @@
 - 箸で納豆を混ぜる操作
 - 盛り付け済みのご飯への盛り付け
 - 4項目の採点と総合点
-- 通常称号12種、特殊称号4種
+- 通常称号14種、特殊称号6種
 - 称号コレクションとブラウザ内保存
 - 日本語・英語切り替え
 - 効果音、ミュート、操作ガイド
@@ -125,6 +125,7 @@ LOADING → INTRO → COOKING ⇄ COLLECTION
 - **ネギ**: あらかじめ分割可能な円柱パーツまたは `InstancedMesh` を使い、切断位置に近いパーツを短く分割する。
 - **納豆**: `whole / coarse / hikiwari / paste` の段階モデルまたは粒子配置を切り替える。
 - **混ぜ**: 箸の軌跡に応じて、糸の本数・長さ、泡、色、表面の揺れを補間する。
+- **卵**: `mixing.progress <= 0.20` では黄身の形を残し、それを超えると段階的に納豆へなじませる。「卵かけご飯」の判定と見た目を一致させる。
 - **盛り付け**: 実流体は使わず、傾け量と着地点に応じて、ご飯上の納豆メッシュとテクスチャを変形・増加させる。
 - **包丁**: 刃と食材の交差をローカル座標で判定する。任意のメッシュ切断は行わない。
 
@@ -217,13 +218,15 @@ LOADING → INTRO → COOKING ⇄ COLLECTION
 - 通常称号と特殊称号の解除状態は言語非依存の内部IDで保存する。
 - 各称号の代表状態を自動テストに使い、全称号が到達可能であることを保証する。
 
-### 11.2 通常称号12種
+### 11.2 通常称号14種
 
 | 優先 | ID | 日本語 / English | 正確な条件 | 未獲得ヒント | 代表状態 |
 |---:|---|---|---|---|---|
 | 120 | `fermentation_master` | 発酵の匠 / Fermentation Master | 4項目すべて90点以上 | すべての工程を極めよう / Master every step | 粒、卵なし、各軸92点 |
 | 110 | `balanced_bowl` | 黄金バランス / Golden Balance | 4項目すべて80点以上、総合85点以上 | 弱点のない一膳を / Make every part shine | ひき割り、卵あり、各軸85点 |
+| 105 | `tamago_kake_gohan` | 卵かけご飯 / Tamago Kake Gohan | `ingredients.egg.added === true`、`mixing.progress <= 0.20`、`serving.transferredRatio >= 0.88`、`serving.spillRatio <= 0.10` | 黄身を残してご飯へ / Let the yolk shine over rice | 卵あり、混ぜ進捗0.12、移し量0.94、こぼれ0.02 |
 | 100 | `whole_bean_artisan` | 粒立ち名人 / Whole-Bean Artisan | `whole`、刻み90点以上、混ぜ80点以上 | 豆の形を生かそう / Let the beans stay whole | 粒、刻み95、混ぜ84 |
+| 99 | `coarse_cut_devotee` | 粗びき派 / Coarse-Cut Devotee | `coarse`、刻み85点以上、混ぜ75点以上 | 粒とひき割りの間を探そう / Find the space between whole and split | 粗びき、刻み88、混ぜ80 |
 | 95 | `hikiwari_master` | ひき割りの達人 / Hikiwari Master | `hikiwari`、刻み90点以上、盛り付け80点以上 | 細かく、でも潰さず / Fine, but never mushy | ひき割り、刻み94、盛付86 |
 | 90 | `fluffy_egg_crafter` | ふわとろ職人 / Fluffy Egg Crafter | 卵あり、混ぜ88点以上、味80点以上 | 卵と空気を味方に / Bring egg and air together | 卵あり、混ぜ92、味84 |
 | 80 | `green_onion_perfumer` | ねぎ香る一膳 / Scallion Fragrance | ネギ量`0.15〜0.35`、細かさと均一さが各0.80以上、味75点以上 | 香りと切り方を整えよう / Balance aroma and cut | ネギ0.25、細かさ0.7、均一0.9 |
@@ -234,14 +237,16 @@ LOADING → INTRO → COOKING ⇄ COLLECTION
 | 30 | `classic_breakfast` | 朝の王道 / Breakfast Classic | `whole`、卵なし、総合75点以上 | 王道は丁寧さから / Treat the classic with care | 粒、卵なし、総合82 |
 | 10 | `homestyle_bowl` | まごころ納豆ご飯 / Homestyle Natto Rice | 完成し、他の通常称号条件を満たさない | まずは一膳を完成させよう / Finish your first bowl | 完成済み、総合任意 |
 
-### 11.3 特殊称号4種
+### 11.3 特殊称号6種
 
 | ID | 日本語 / English | 正確な条件 | 未獲得ヒント | 代表状態 |
 |---|---|---|---|---|
 | `paste_researcher` | 納豆ペースト研究員 / Natto Paste Researcher | `cutStage === "paste"` | 刻むことにも限界がある / Even chopping has a limit | `cutProgress >= 0.96` |
 | `mustard_volcano` | からし火山 / Mustard Volcano | `mustardG >= 2.2` | 黄色い刺激を恐れずに / Embrace the yellow heat | からし2.3g |
 | `soy_sauce_sea` | 醤油の海 / Sea of Soy Sauce | `soySauceMl >= 8.0` | 入れ物にも限界がある / Every bowl has its limit | 醤油8.2ml |
+| `scallion_mountain` | ねぎだく山 / Scallion Mountain | `ingredients.greenOnion.usedAmount >= 0.65` | 緑の山を築いてみよう / Build a mountain of green | ネギ量0.70 |
 | `chaos_threads` | 混沌の糸使い / Weaver of Chaos | `mixing.progress >= 0.96` かつ `aeration >= 0.90` | 混ぜ続けた先を見よう / See what lies beyond mixing | 進捗0.98、泡立ち0.94 |
+| `serving_disaster` | 盛り付け大事故 / Serving Disaster | `serving.spillRatio >= 0.35` | ご飯の外にも世界は広い / Not everything lands on the rice | こぼれ0.40 |
 
 称号名と英訳は実装時のコピー編集で自然さを調整できるが、内部IDと獲得条件は仕様変更として扱う。
 
@@ -368,7 +373,7 @@ natto/
 - 4採点式の境界値と単調性
 - 通常称号の優先順位
 - 特殊称号の複数同時解除
-- 全16称号の代表 `GameState` による到達性
+- 全20称号の代表 `GameState` による到達性
 - `CUT / MIX / SERVE / RESULT` の状態遷移と不可逆操作
 - 保存、破損保存、schema version、全消去
 - 日英翻訳キーの一致とフォールバック
@@ -410,7 +415,7 @@ SSH URLを使うため、公開作業環境でGitHub SSH鍵が利用できるこ
 - 粒納豆、ひき割り、卵あり、卵なしの4系統すべてで総合85点以上を獲得できる。
 - ペーストだけが納豆の刻みすぎとして明確に減点される。
 - 4項目の点数と操作結果に説明可能な対応関係がある。
-- 通常12種と特殊4種がすべてテストで到達可能である。
+- 通常14種と特殊6種がすべてテストで到達可能である。
 - 未獲得称号は名前を伏せて日英ヒントだけを表示する。
 - ブラウザ再読み込み後も獲得称号が維持される。
 - 375×812で主要操作が44px以上となり、safe-areaと英語文言で崩れない。
