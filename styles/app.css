@@ -1,0 +1,19 @@
+:root {
+  color-scheme: light;
+  font-family: system-ui, sans-serif;
+  background: #f5ead8;
+  color: #34261d;
+}
+
+body {
+  min-height: 100svh;
+  margin: 0;
+}
+
+#app {
+  box-sizing: border-box;
+  width: min(100%, 48rem);
+  margin-inline: auto;
+  padding: 2rem max(1rem, env(safe-area-inset-right)) 2rem max(1rem, env(safe-area-inset-left));
+}
+
