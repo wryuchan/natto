@@ -127,6 +127,6 @@ export function createRenderer(canvas, profile, rendererFactory = null) {
     : new THREE.WebGLRenderer({ canvas, antialias: profile.antialias, alpha: false });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.shadowMap.enabled = profile.shadows;
-  if (profile.shadows) renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  if (profile.shadows) renderer.shadowMap.type = THREE.PCFShadowMap;
   return renderer;
 }

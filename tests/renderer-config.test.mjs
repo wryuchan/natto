@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { Group } from 'three';
+import { Group, PCFShadowMap } from 'three';
 
 import { createInitialGameState } from '../src/core/game-state.js';
 import {
+  createRenderer,
   getCameraDescriptor,
   resizeRendererToCanvas,
   selectQualityProfile,
@@ -94,6 +95,12 @@ test('quality profiles cap DPR and degrade threads, foam, shadows, then resoluti
     { pixelRatio: 2, shadows: false, threadCount: 36, foamCount: 24, antialias: true },
     { pixelRatio: 1.5, shadows: false, threadCount: 36, foamCount: 24, antialias: true },
   ]);
+});
+
+test('shadow-enabled renderers use the supported PCF shadow map type', () => {
+  const renderer = createRenderer(makeCanvas(), { shadows: true }, () => makeRenderer(makeCanvas()));
+
+  assert.equal(renderer.shadowMap.type, PCFShadowMap);
 });
 
 test('portrait and desktop cameras frame the same station coordinate system', () => {

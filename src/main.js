@@ -5,6 +5,7 @@ import { createAudioSystem } from './systems/audio.js';
 import { LOCALE_KEY, createPersistence } from './systems/persistence.js';
 import { resolveLocale } from './systems/i18n.js';
 import { createRecoveryController } from './systems/recovery.js';
+import { createStartupScene, loadLocalAsset } from './systems/startup.js';
 import { createShell } from './ui/shell.js';
 
 const root = document.querySelector('#app');
@@ -82,17 +83,27 @@ if (root) {
   const recovery = createRecoveryController({
     scene: controller,
     shell,
-    rebuild: async (state) => buildScene(state),
+    rebuild: async (state) => startup.build(state),
   });
   recovery.attach(canvas);
+  const loadAssets = () => loadLocalAsset('./assets/images/favicon.svg');
+  const startup = createStartupScene({
+    recovery,
+    loadAssets,
+    buildScene,
+  });
 
-  try {
-    controller.setScene(buildScene());
-    controller.renderSceneFrame();
-    controller.resume();
-  } catch {
-    recovery.reportWebGLFailure();
-  }
+  void (async () => {
+    try {
+      const scene = await startup.start();
+      if (!scene) return;
+      controller.setScene(scene);
+      controller.renderSceneFrame();
+      controller.resume();
+    } catch {
+      recovery.reportWebGLFailure();
+    }
+  })();
 
   root.dataset.ready = 'true';
   canvas?.focus({ preventScroll: true });

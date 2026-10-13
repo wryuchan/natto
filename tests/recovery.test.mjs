@@ -8,6 +8,7 @@ import { createInitialGameState } from '../src/core/game-state.js';
 import { createKitchenScene } from '../src/scene/kitchen.js';
 import { selectQualityProfile } from '../src/scene/renderer.js';
 import { createRecoveryController } from '../src/systems/recovery.js';
+import { createStartupScene } from '../src/systems/startup.js';
 
 function makeStation(id, profileChanges = []) {
   return {
@@ -63,6 +64,54 @@ test('asset failure pauses input and exposes a translated retry state with the f
   assert.equal(model.retryLabel, '再読み込み');
   assert.equal(model.actionable, true);
   assert.equal(shown.at(-1), model);
+});
+
+test('startup asset failure enters recovery and retry reloads the same asset before rebuilding', async () => {
+  const state = createInitialGameState();
+  const calls = [];
+  let assetAvailable = false;
+  const scene = {
+    getState: () => state,
+    getLocale: () => 'en',
+    pause: () => calls.push('pause'),
+    setScene: (next) => calls.push(['setScene', next]),
+    renderSceneFrame: () => calls.push('render'),
+    resume: () => calls.push('resume'),
+  };
+  let startup;
+  const recovery = createRecoveryController({
+    scene,
+    shell: { showRecovery() {}, hideRecovery() {} },
+    rebuild: (snapshot) => startup.build(snapshot),
+  });
+  startup = createStartupScene({
+    recovery,
+    loadAssets: async () => {
+      calls.push('load assets');
+      if (!assetAvailable) {
+        const error = new Error('favicon missing');
+        error.assetId = './assets/images/favicon.svg';
+        throw error;
+      }
+    },
+    buildScene: async (snapshot) => {
+      calls.push(['build scene', snapshot]);
+      return { renderFrame() {} };
+    },
+  });
+
+  assert.equal(await startup.start(state), null);
+  assert.equal(recovery.getStatus().kind, 'asset');
+  assert.equal(recovery.getStatus().assetId, './assets/images/favicon.svg');
+  assert.deepEqual(calls, ['load assets', 'pause']);
+
+  assetAvailable = true;
+  assert.equal(await recovery.retry(), true);
+  assert.deepEqual(calls.slice(0, 4), ['load assets', 'pause', ['setScene', null], 'load assets']);
+  assert.equal(calls[4][0], 'build scene');
+  assert.equal(JSON.stringify(calls[4][1]), JSON.stringify(state));
+  assert.equal(calls[5][0], 'setScene');
+  assert.deepEqual(calls.slice(6), ['render', 'resume']);
 });
 
 test('context loss prevents default handling, pauses, and preserves the exact serialized GameState', () => {
