@@ -114,6 +114,48 @@ test('startup asset failure enters recovery and retry reloads the same asset bef
   assert.deepEqual(calls.slice(6), ['render', 'resume']);
 });
 
+test('retry-time startup asset failure preserves the actionable asset error and exact asset ID', async () => {
+  const state = createInitialGameState();
+  let loads = 0;
+  let builds = 0;
+  let startup;
+  const recovery = createRecoveryController({
+    scene: {
+      getState: () => state,
+      getLocale: () => 'ja',
+      pause() {},
+      setScene() {},
+      resume() { assert.fail('resume must not run when the asset stays unavailable'); },
+    },
+    shell: { showRecovery() {} },
+    rebuild: (snapshot) => startup.build(snapshot),
+  });
+  startup = createStartupScene({
+    recovery,
+    loadAssets: async () => {
+      loads += 1;
+      const error = new Error('favicon missing');
+      error.assetId = './assets/images/favicon.svg';
+      throw error;
+    },
+    buildScene: async () => {
+      builds += 1;
+      return {};
+    },
+  });
+
+  await startup.start(state);
+  assert.equal(await recovery.retry(), false);
+
+  const status = recovery.getStatus();
+  assert.equal(loads, 2);
+  assert.equal(builds, 0);
+  assert.equal(status.kind, 'asset');
+  assert.equal(status.assetId, './assets/images/favicon.svg');
+  assert.equal(status.actionable, true);
+  assert.match(status.message, /favicon\.svg/);
+});
+
 test('context loss prevents default handling, pauses, and preserves the exact serialized GameState', () => {
   const state = createInitialGameState();
   state.ingredients.soySauceMl = 3.75;

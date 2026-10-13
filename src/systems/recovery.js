@@ -91,7 +91,11 @@ export function createRecoveryController({ scene, shell, rebuild } = {}) {
         shell.hideRecovery?.();
         return true;
       } catch (error) {
-        show('restoreFailed', { actionable: true });
+        if (typeof error?.assetId === 'string' && error.assetId.length > 0) {
+          show('asset', { assetId: error.assetId, actionable: true });
+        } else {
+          show('restoreFailed', { actionable: true });
+        }
         return false;
       } finally {
         inFlight = null;
