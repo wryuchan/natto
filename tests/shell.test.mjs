@@ -404,33 +404,47 @@ test('serve is guarded before confirmation until natto is in the bowl and guidan
   assert.equal(announcements.at(-1), '盛り付ける前に、納豆を混ぜ鉢へ移してください。');
 });
 
-test('alternative buttons complete the required keyboard-only cooking path', () => {
-  const confirmations = [];
-  const controller = createAppController({
+test('rendered alternative buttons complete the required keyboard-only cooking path through shell handlers', () => {
+  const fixture = shellFixture();
+  let controller = null;
+  const shell = createShell(fixture.root, {
+    switchStation: (station) => controller?.switchStation(station),
+    alternativeAction: (slot, opener) => controller?.performAlternativeAction(slot, opener),
+  });
+  controller = createAppController({
     locale: 'en',
     settings: { ...defaultSettings, tutorialSeen: true },
-    shell: {
-      render() {}, showTutorial() {}, showView() {}, announce() {},
-      showConfirmation: (_copy, accept) => confirmations.push(accept),
-    },
+    shell,
   });
 
-  assert.equal(controller.performAlternativeAction('primary'), true);
+  assert.equal(fixture.elements.alternativePrimary.hidden, false);
+  assert.equal(fixture.elements.alternativePrimary.textContent, 'Chop natto');
+  fixture.elements.alternativePrimary.click();
   assert.equal(controller.getState().ingredients.natto.cutProgress, 0.1);
-  controller.performAlternativeAction('secondary');
-  confirmations.pop()();
+
+  assert.equal(fixture.elements.alternativeSecondary.hidden, false);
+  assert.equal(fixture.elements.alternativeSecondary.textContent, 'Move natto to bowl');
+  fixture.elements.alternativeSecondary.click();
+  assert.equal(fixture.elements.dialog.open, true);
+  fixture.elements.accept.click();
   assert.equal(controller.getState().ingredients.natto.inBowl, true);
 
-  controller.switchStation('mix');
-  assert.equal(controller.performAlternativeAction('primary'), true);
+  fixture.stations[1].click();
+  assert.equal(fixture.elements.alternativePrimary.textContent, 'Mix in a circle');
+  assert.equal(fixture.elements.alternativeSecondary.textContent, 'Add egg');
+  fixture.elements.alternativePrimary.click();
   assert.equal(controller.getState().mixing.progress > 0, true);
-  assert.equal(controller.performAlternativeAction('secondary'), true);
+  fixture.elements.alternativeSecondary.click();
   assert.equal(controller.getState().ingredients.egg.added, true);
 
-  controller.switchStation('serve');
-  controller.performAlternativeAction('primary');
-  confirmations.pop()();
+  fixture.stations[2].click();
+  assert.equal(fixture.elements.alternativePrimary.textContent, 'Serve over rice');
+  assert.equal(fixture.elements.alternativeSecondary.hidden, true);
+  fixture.elements.alternativePrimary.click();
+  assert.equal(fixture.elements.dialog.open, true);
+  fixture.elements.accept.click();
   assert.equal(controller.getState().serving.transferredRatio > 0, true);
+  controller.dispose();
 });
 
 test('shell renders localized document metadata and an actionable recovery overlay', () => {
@@ -491,6 +505,7 @@ test('static shell has labeled live regions, dialogs, safe areas, and wrapping 4
   ]);
 
   assert.match(html, /<html lang="ja">/);
+  assert.match(html, /<div class="app-tools" role="group" aria-label="設定">/);
   assert.match(html, /id="app-status"[^>]*role="status"[^>]*aria-live="polite"/);
   assert.match(html, /role="alert"[^>]*aria-live="assertive"/);
   assert.match(html, /<dialog[^>]*aria-labelledby="dialog-title"[^>]*aria-describedby="dialog-body"/);
@@ -503,10 +518,18 @@ test('static shell has labeled live regions, dialogs, safe areas, and wrapping 4
   assert.match(css, /min-(?:block-size|height):\s*44px/);
   assert.doesNotMatch(css, /white-space:\s*nowrap/);
   assert.match(css, /\[hidden\]\s*\{[^}]*display:\s*none\s*!important/s);
-  assert.match(css, /\.app-shell\s*\{[^}]*height:\s*100svh/s);
-  assert.match(css, /#game-canvas\s*\{[^}]*contain:\s*size/s);
 
   const fixedPixelWidths = [...css.matchAll(/(?:^|[;{])\s*(?:width|max-width):\s*(\d+)px/gm)]
     .map((match) => Number(match[1]));
   assert.ok(fixedPixelWidths.every((width) => width <= 375));
+});
+
+test('layout contract keeps a definite viewport track and excludes canvas buffer size from grid sizing', async () => {
+  const css = await readFile(new URL('../styles/app.css', import.meta.url), 'utf8');
+  const shellRule = css.match(/\.app-shell\s*\{([^}]*)\}/s)?.[1] ?? '';
+  const canvasRule = css.match(/#game-canvas\s*\{([^}]*)\}/s)?.[1] ?? '';
+
+  assert.match(shellRule, /(?:^|\n)\s*height:\s*100svh\s*;/);
+  assert.doesNotMatch(shellRule, /min-height:\s*100svh/);
+  assert.match(canvasRule, /(?:^|\n)\s*contain:\s*size\s*;/);
 });

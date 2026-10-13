@@ -108,3 +108,38 @@ The alternative buttons intentionally cover the required completion path and
 egg addition; optional scallion and condiment variants remain pointer-driven.
 They are not required to finish a bowl, while all required canvas-only actions
 now have visible, focusable button equivalents.
+
+## Independent review fix round 1
+
+The follow-up review found that `.app-tools` had a localized `aria-label` but
+remained a plain generic `div`, so the label was not reliably exposed as a
+named settings group. A focused semantic-contract test failed against that
+markup, then passed after adding `role="group"`; the existing shell render path
+continues to update the group's accessible name in both directions.
+
+The keyboard-only regression now creates the real shell/controller pair,
+asserts that each station's rendered buttons are visible with the expected
+localized labels, and activates every action through the buttons' actual click
+listeners across Cut → Mix → Serve. It verifies both confirmation dialogs via
+their rendered accept button rather than calling controller actions directly.
+
+The responsive style checks were split into an explicit layout-contract test:
+removing the definite `height: 100svh`, restoring a viewport `min-height`, or
+removing canvas `contain: size` now fail independent assertions. The exact
+375×812 → 1280×800 → 375×812 behavior remains covered by the live browser
+round trip rather than adding a heavyweight browser dependency to `npm test`.
+
+Fix-round RED/GREEN and browser evidence:
+
+```text
+node --test tests/shell.test.mjs  # RED: 17 passed, 1 failed (missing settings group role)
+node --test tests/shell.test.mjs  # GREEN: 18 passed, 0 failed
+npm test                          # 129 passed, 0 failed
+```
+
+The accessibility snapshot exposed `group "Settings"`; after switching
+locale it exposed `group "設定"`, confirming that the semantic group and its
+localized name both reach the accessibility tree. The repeated viewport run
+measured 351×307 at 375×812, 1000×399 at 1280×800, and 351×307 after returning
+to 375×812. Body and shell scroll heights stayed equal to the corresponding
+812/800/812 viewport heights, and browser warnings/errors remained at zero.
