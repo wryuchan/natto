@@ -37,6 +37,8 @@ if (root) {
     help: (opener) => controller?.showTutorial(opener),
     collection: () => controller?.openCollection(),
     finish: (opener) => controller?.requestIrreversible('finish', { type: 'FINISH' }, opener),
+    restart: (opener) => controller?.requestIrreversible('restart', { type: 'RESET_RUN' }, opener),
+    setGreenOnionAmount: (amount) => controller?.setGreenOnionAmount(amount),
   });
   const stations = [STATIONS.CUT, STATIONS.MIX, STATIONS.SERVE];
   controller = createAppController({
@@ -68,6 +70,9 @@ if (root) {
       },
       playEffect(effect) {
         controller.playEffect(effect);
+      },
+      getGreenOnionAmount() {
+        return controller.getGreenOnionAmount();
       },
       onBackgroundSwipe(direction) {
         const currentIndex = stations.indexOf(controller.getState().station);

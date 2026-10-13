@@ -9,7 +9,7 @@ const CONFIRMATION_IDS = Object.freeze([
   'restart',
 ]);
 
-export function deriveShellModel(state, settings = {}, locale = 'en') {
+export function deriveShellModel(state, settings = {}, locale = 'en', operation = {}) {
   const t = createTranslator(locale);
   const skipConfirmations = settings.skipIrreversibleConfirmations === true;
   const confirmation = (id) => skipConfirmations ? null : {
@@ -17,6 +17,7 @@ export function deriveShellModel(state, settings = {}, locale = 'en') {
     body: t(`confirm.${id}.body`),
     accept: t('confirm.accept'),
     cancel: t('confirm.cancel'),
+    skipNext: t('confirm.skipNext'),
   };
 
   return {
@@ -46,6 +47,9 @@ export function deriveShellModel(state, settings = {}, locale = 'en') {
       help: t('shell.help'),
       collection: t('shell.collection'),
       finish: t('shell.finish'),
+      restart: t('shell.restart'),
+      greenOnionAmount: Number.isFinite(operation.greenOnionAmount) ? operation.greenOnionAmount : 0.25,
+      greenOnionAmountLabel: t('shell.greenOnionAmount'),
       finishDisabled: state.phase !== PHASES.COOKING || state.serving.transferredRatio <= 0,
     },
     tutorial: {
@@ -74,6 +78,9 @@ export function createShell(root, callbacks = {}) {
   const helpButton = root.querySelector('[data-action="help"]');
   const collectionButton = root.querySelector('[data-action="collection"]');
   const finishButton = root.querySelector('[data-action="finish"]');
+  const restartButton = root.querySelector('[data-action="restart"]');
+  const onionAmount = root.querySelector('[data-action="onion-amount"]');
+  const onionAmountLabel = root.querySelector('[data-onion-amount-label]');
   const canvas = root.querySelector('#game-canvas');
   const appTitle = root.querySelector('.app-title');
   const stationNav = root.querySelector('.station-nav');
@@ -83,6 +90,8 @@ export function createShell(root, callbacks = {}) {
   const dialogBody = root.querySelector('#dialog-body');
   const acceptButton = root.querySelector('[data-dialog="accept"]');
   const cancelButton = root.querySelector('[data-dialog="cancel"]');
+  const skipConfirmation = root.querySelector('[data-dialog="skip-confirmations"]');
+  const skipConfirmationLabel = root.querySelector('[data-dialog-label="skip-confirmations"]');
   const recoveryOverlay = root.querySelector('#recovery-overlay');
   const recoveryMessage = root.querySelector('[data-recovery-message]');
   const recoveryRetry = root.querySelector('[data-recovery="retry"]');
@@ -106,6 +115,8 @@ export function createShell(root, callbacks = {}) {
   listen(helpButton, 'click', (event) => callbacks.help?.(event.currentTarget));
   listen(collectionButton, 'click', (event) => callbacks.collection?.(event.currentTarget));
   listen(finishButton, 'click', (event) => callbacks.finish?.(event.currentTarget));
+  listen(restartButton, 'click', (event) => callbacks.restart?.(event.currentTarget));
+  listen(onionAmount, 'input', (event) => callbacks.setGreenOnionAmount?.(Number(event.currentTarget.value)));
   listen(recoveryRetry, 'click', () => recoveryAction?.());
 
   const closeDialog = () => {
@@ -116,7 +127,7 @@ export function createShell(root, callbacks = {}) {
     const action = pendingAction;
     pendingAction = null;
     closeDialog();
-    action?.();
+    action?.({ skip: skipConfirmation?.checked === true });
   });
   listen(cancelButton, 'click', () => {
     pendingAction = null;
@@ -136,6 +147,12 @@ export function createShell(root, callbacks = {}) {
     dialogBody.textContent = copy.body;
     acceptButton.textContent = copy.accept;
     cancelButton.textContent = copy.cancel;
+    if (skipConfirmation) skipConfirmation.checked = false;
+    if (skipConfirmationLabel) {
+      skipConfirmationLabel.hidden = !copy.skipNext;
+      skipConfirmationLabel.textContent = copy.skipNext ?? '';
+      skipConfirmationLabel.prepend(skipConfirmation);
+    }
     if (!dialog.open) dialog.showModal();
     acceptButton.focus();
   };
@@ -164,6 +181,12 @@ export function createShell(root, callbacks = {}) {
         finishButton.textContent = model.controls.finish;
         finishButton.disabled = model.controls.finishDisabled;
         finishButton.setAttribute('aria-label', model.metadata.aria.finish);
+      }
+      if (restartButton) restartButton.textContent = model.controls.restart;
+      if (onionAmountLabel) onionAmountLabel.textContent = model.controls.greenOnionAmountLabel;
+      if (onionAmount) {
+        onionAmount.value = String(model.controls.greenOnionAmount);
+        onionAmount.setAttribute('aria-label', model.controls.greenOnionAmountLabel);
       }
       const documentElement = root.ownerDocument?.documentElement;
       if (documentElement) documentElement.lang = model.locale;

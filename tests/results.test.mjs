@@ -130,6 +130,11 @@ test('locked collection records expose silhouettes and translated hints but neve
   assert.doesNotMatch(JSON.stringify(collection), /Fermentation Master|発酵の匠/);
 });
 
+test('collection discloses whether titles persist locally or only for this session', () => {
+  assert.match(buildCollectionModel(emptySave(), 'en', 'local').copy.disclosure, /saved in this browser/);
+  assert.match(buildCollectionModel(emptySave(), 'en', 'memory').copy.disclosure, /only for this session/);
+});
+
 test('unlocked collection records expose localized names and locale-independent best data', () => {
   const save = emptySave();
   save.achievements.fermentation_master = {

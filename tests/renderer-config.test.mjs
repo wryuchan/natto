@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import { Group, PCFShadowMap } from 'three';
 
+import { createAppController } from '../src/app-controller.js';
 import { createInitialGameState } from '../src/core/game-state.js';
 import {
   createRenderer,
@@ -22,8 +23,11 @@ function makeCanvas(width = 375, height = 500) {
     addEventListener(type, listener) {
       listeners.set(type, listener);
     },
-    removeEventListener(type) {
-      listeners.delete(type);
+    removeEventListener(type, listener) {
+      if (listeners.get(type) === listener) listeners.delete(type);
+    },
+    dispatchPointer(type, event) {
+      listeners.get(type)?.(event);
     },
     getBoundingClientRect() {
       return { left: 0, top: 0, width, height };
@@ -215,4 +219,36 @@ test('reduced motion makes the fixed-camera station transition immediate', () =>
 
   assert.deepEqual(kitchen.camera.position.toArray(), [...target]);
   kitchen.dispose();
+});
+
+test('controller blocks station switching until an active pointer ends at its owning station', () => {
+  const canvas = makeCanvas(375, 812);
+  const renderer = makeRenderer(canvas);
+  const calls = [];
+  const stations = ['cut', 'mix', 'serve'].map((id) => ({
+    ...makeStation(id, []),
+    hitTest: () => ({ type: 'drag' }),
+    applyPointerSample: (phase) => calls.push([id, phase]),
+  }));
+  const kitchen = createKitchenScene(canvas, {
+    stations,
+    rendererFactory: () => renderer,
+    autoStart: false,
+  });
+  const controller = createAppController({
+    scene: kitchen,
+    settings: { muted: false, skipIrreversibleConfirmations: true, tutorialSeen: true },
+    shell: { render() {}, showView() {}, showTutorial() {}, announce() {} },
+  });
+  const pointer = { pointerId: 1, clientX: 120, clientY: 120 };
+
+  canvas.dispatchPointer('pointerdown', pointer);
+  assert.equal(controller.switchStation('mix'), false);
+  assert.equal(controller.getState().station, 'cut');
+  canvas.dispatchPointer('pointerup', pointer);
+  assert.equal(controller.switchStation('mix'), true);
+  assert.equal(controller.getState().station, 'mix');
+
+  assert.deepEqual(calls, [['cut', 'start'], ['cut', 'end']]);
+  controller.dispose();
 });

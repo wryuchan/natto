@@ -8,6 +8,7 @@ const ja = {
     help: '遊び方',
     collection: '称号一覧',
     restart: '最初からやり直す',
+    greenOnionAmount: 'ねぎの量',
     ready: '調理の準備ができました',
   },
   tutorial: {

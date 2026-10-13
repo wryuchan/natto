@@ -102,11 +102,19 @@ export function reduceGameState(state, event) {
         if (onion.inBowl) return state;
         const updates = updateNormalized(onion, event, ['fineness', 'uniformity']);
         if (!updates) return state;
+        if (
+          Object.hasOwn(event, 'cutPositions')
+          && (!Array.isArray(event.cutPositions) || event.cutPositions.some((position) => !isFiniteNumber(position)))
+        ) return state;
         return {
           ...state,
           ingredients: {
             ...state.ingredients,
-            greenOnion: { ...onion, ...updates },
+            greenOnion: {
+              ...onion,
+              ...updates,
+              ...(Object.hasOwn(event, 'cutPositions') ? { cutPositions: [...event.cutPositions] } : {}),
+            },
           },
         };
       }

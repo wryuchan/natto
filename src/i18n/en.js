@@ -8,6 +8,7 @@ const en = {
     help: 'How to play',
     collection: 'Title collection',
     restart: 'Start over',
+    greenOnionAmount: 'Scallion amount',
     ready: 'Ready to cook',
   },
   tutorial: {

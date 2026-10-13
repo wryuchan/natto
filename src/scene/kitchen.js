@@ -240,7 +240,7 @@ export function createKitchenScene(canvas, options = {}) {
     getCameraDescriptor: currentDescriptor,
     getStation: (id = activeId) => stations.get(id) ?? null,
     setStation(id) {
-      if (!stations.has(id) || id === activeId) return false;
+      if (!stations.has(id) || id === activeId || pointerRouter?.getOwner()) return false;
       const fromPosition = camera.position.clone();
       const fromTarget = cameraTarget.clone();
       const fromFov = camera.fov;
@@ -260,6 +260,7 @@ export function createKitchenScene(canvas, options = {}) {
       };
       return true;
     },
+    isPointerActive: () => Boolean(pointerRouter?.getOwner()),
     renderState(state) {
       if (!state || typeof state !== 'object') return false;
       lastState = state;

@@ -31,6 +31,8 @@ const EVENT_EFFECTS = Object.freeze({
   UPDATE_CUT: 'chop',
   ADD_EGG: 'crack',
   ADD_CONDIMENT: 'pour',
+  TRANSFER_TO_BOWL: 'pour',
+  TRANSFER_TO_RICE: 'serve',
   UPDATE_MIX: 'stir',
   FINISH: 'result',
 });
@@ -64,6 +66,7 @@ export function createAppController({
   let resultPreviousSave = null;
   let currentResultModel = null;
   let recoveryPaused = false;
+  let greenOnionAmount = 0.25;
   activeAudio.setMuted?.(activeSettings.muted);
 
   const playEffect = (effect) => {
@@ -72,7 +75,7 @@ export function createAppController({
     });
   };
 
-  const model = () => deriveShellModel(state, activeSettings, activeLocale);
+  const model = () => deriveShellModel(state, activeSettings, activeLocale, { greenOnionAmount });
   const loadSave = () => persistence?.load?.() ?? {
     version: 1,
     achievements: {},
@@ -83,7 +86,7 @@ export function createAppController({
     shell.showView?.(view);
   };
   const renderCollectionView = () => {
-    const collectionModel = buildCollectionModel(loadSave(), activeLocale);
+    const collectionModel = buildCollectionModel(loadSave(), activeLocale, persistence?.mode);
     if (collectionRoot) {
       renderCollection(collectionRoot, collectionModel, {
         close: () => controller.closeCollection(),
@@ -141,6 +144,7 @@ export function createAppController({
     getModel: model,
     dispatch,
     switchStation(station) {
+      if (activeScene.isPointerActive?.()) return false;
       return dispatch({ type: 'SWITCH_STATION', station });
     },
     setLocale(nextLocale) {
@@ -164,12 +168,23 @@ export function createAppController({
       persistence?.updateSettings?.({ tutorialSeen: true });
       render({ projectScene: false });
     },
+    getGreenOnionAmount: () => greenOnionAmount,
+    setGreenOnionAmount(amount) {
+      if (!Number.isFinite(amount)) return false;
+      greenOnionAmount = Math.min(1, Math.max(0.05, amount));
+      render({ projectScene: false });
+      return true;
+    },
     showTutorial(opener = null) {
       shell.showTutorial?.(model().tutorial, controller.completeTutorial, opener);
     },
     requestIrreversible(kind, event, opener = null, followUpEvent = null) {
       const copy = model().confirmations[kind];
-      const accept = () => {
+      const accept = ({ skip = false } = {}) => {
+        if (skip) {
+          activeSettings = { ...activeSettings, skipIrreversibleConfirmations: true };
+          persistence?.updateSettings?.({ skipIrreversibleConfirmations: true });
+        }
         const applied = dispatch(event);
         if (applied && followUpEvent) dispatch(followUpEvent);
         return applied;

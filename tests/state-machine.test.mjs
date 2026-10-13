@@ -25,6 +25,7 @@ const INITIAL_STATE = {
       usedAmount: 0,
       fineness: 0,
       uniformity: 0,
+      cutPositions: [],
       inBowl: false,
     },
     egg: { added: false },
@@ -196,6 +197,27 @@ test('normalized updates clamp finite fields to zero through one', () => {
   });
   assert.equal(mixed.mixing.progress, 1);
   assert.equal(mixed.mixing.aeration, 0);
+});
+
+test('onion cut positions survive serializing state and later updates', () => {
+  const cut = reduceGameState(createInitialGameState(), {
+    type: 'UPDATE_CUT',
+    ingredient: 'greenOnion',
+    fineness: 0.3,
+    uniformity: 0.8,
+    cutPositions: [0.35, 0.7, 1.05],
+  });
+  const recovered = JSON.parse(JSON.stringify(cut));
+  const continued = reduceGameState(recovered, {
+    type: 'UPDATE_CUT',
+    ingredient: 'greenOnion',
+    fineness: 0.4,
+    uniformity: 0.85,
+    cutPositions: [0.35, 0.7, 1.05, 1.4],
+  });
+
+  assert.deepEqual(continued.ingredients.greenOnion.cutPositions, [0.35, 0.7, 1.05, 1.4]);
+  assert.deepEqual(JSON.parse(JSON.stringify(continued)), continued);
 });
 
 test('reset creates a fresh run without touching external achievement data', () => {

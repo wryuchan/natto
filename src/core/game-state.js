@@ -33,6 +33,7 @@ export function createInitialGameState() {
         usedAmount: 0,
         fineness: 0,
         uniformity: 0,
+        cutPositions: [],
         inBowl: false,
       },
       egg: { added: false },
@@ -54,4 +55,3 @@ export function createInitialGameState() {
     },
   };
 }
-

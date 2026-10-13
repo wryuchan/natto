@@ -59,12 +59,16 @@ function shellFixture() {
     mute: new FakeElement({ action: 'mute' }),
     help: new FakeElement({ action: 'help' }),
     finish: new FakeElement({ action: 'finish' }),
+    restart: new FakeElement({ action: 'restart' }),
+    onionAmount: new FakeElement({ action: 'onion-amount' }),
+    onionAmountLabel: new FakeElement(),
     status: new FakeElement(),
     dialog: new FakeElement(),
     title: new FakeElement(),
     body: new FakeElement(),
     accept: new FakeElement({ dialog: 'accept' }),
     cancel: new FakeElement({ dialog: 'cancel' }),
+    skip: new FakeElement({ dialog: 'skip-confirmations' }),
     canvas: new FakeElement(),
     recovery: new FakeElement(),
     recoveryMessage: new FakeElement(),
@@ -77,12 +81,16 @@ function shellFixture() {
     ['[data-action="mute"]', elements.mute],
     ['[data-action="help"]', elements.help],
     ['[data-action="finish"]', elements.finish],
+    ['[data-action="restart"]', elements.restart],
+    ['[data-action="onion-amount"]', elements.onionAmount],
+    ['[data-onion-amount-label]', elements.onionAmountLabel],
     ['#app-status', elements.status],
     ['#app-dialog', elements.dialog],
     ['#dialog-title', elements.title],
     ['#dialog-body', elements.body],
     ['[data-dialog="accept"]', elements.accept],
     ['[data-dialog="cancel"]', elements.cancel],
+    ['[data-dialog="skip-confirmations"]', elements.skip],
     ['#game-canvas', elements.canvas],
     ['#recovery-overlay', elements.recovery],
     ['[data-recovery-message]', elements.recoveryMessage],
@@ -149,6 +157,7 @@ test('irreversible copy is present unless confirmations are skipped', () => {
     'restart',
   ]);
   assert.equal(guarded.confirmations.transferToRice.title, 'Serve this over rice?');
+  assert.equal(guarded.confirmations.transferToRice.skipNext, 'Do not show this again');
 
   const skipped = deriveShellModel(
     state,
@@ -248,6 +257,60 @@ test('shell view routes tab clicks and restores focus when a dialog closes', () 
   view.dispose();
 });
 
+test('shell confirmation forwards the accepted opt-out choice', () => {
+  const fixture = shellFixture();
+  const accepted = [];
+  const view = createShell(fixture.root);
+
+  view.showConfirmation({
+    title: 'Continue?', body: 'This cannot be undone.', accept: 'Continue', cancel: 'Back',
+    skipNext: 'Do not show this again',
+  }, (options) => accepted.push(options));
+  fixture.elements.skip.checked = true;
+  fixture.elements.accept.click();
+
+  assert.deepEqual(accepted, [{ skip: true }]);
+  view.dispose();
+});
+
+test('shell localizes the visible scallion amount control', () => {
+  const fixture = shellFixture();
+  const view = createShell(fixture.root);
+
+  view.render(deriveShellModel(createInitialGameState(), defaultSettings, 'en', { greenOnionAmount: 0.65 }));
+
+  assert.equal(fixture.elements.onionAmountLabel.textContent, 'Scallion amount');
+  assert.equal(fixture.elements.onionAmount.value, '0.65');
+  view.dispose();
+});
+
+test('controller persists accepted confirmation opt-out and resets only the current run', () => {
+  const confirmations = [];
+  const savedSettings = [];
+  const collection = { homestyle_bowl: { unlockedAt: '2026-10-12T00:00:00.000Z' } };
+  const controller = createAppController({
+    settings: defaultSettings,
+    persistence: {
+      load: () => ({ version: 1, achievements: collection, settings: defaultSettings }),
+      updateSettings: (settings) => savedSettings.push(settings),
+    },
+    shell: {
+      render() {}, showTutorial() {}, announce() {}, showView() {},
+      showConfirmation: (_copy, accept) => confirmations.push(accept),
+    },
+  });
+
+  controller.requestIrreversible('transferToBowl', {
+    type: 'TRANSFER_TO_BOWL', ingredient: 'natto', amount: 1,
+  });
+  confirmations.pop()({ skip: true });
+  controller.requestIrreversible('restart', { type: 'RESET_RUN' });
+
+  assert.equal(savedSettings.at(-1).skipIrreversibleConfirmations, true);
+  assert.deepEqual(controller.getState(), createInitialGameState());
+  assert.deepEqual(collection, { homestyle_bowl: { unlockedAt: '2026-10-12T00:00:00.000Z' } });
+});
+
 test('shell renders localized document metadata and an actionable recovery overlay', () => {
   const fixture = shellFixture();
   let retries = 0;
@@ -285,6 +348,9 @@ test('static shell has labeled live regions, dialogs, safe areas, and wrapping 4
   assert.match(html, /role="alert"[^>]*aria-live="assertive"/);
   assert.match(html, /<dialog[^>]*aria-labelledby="dialog-title"[^>]*aria-describedby="dialog-body"/);
   assert.equal((html.match(/data-station=/g) ?? []).length, 3);
+  assert.match(html, /data-action="restart"/);
+  assert.match(html, /data-action="onion-amount"/);
+  assert.match(html, /data-dialog="skip-confirmations"/);
   assert.match(css, /--safe-top:\s*env\(safe-area-inset-top/);
   assert.match(css, /--safe-bottom:\s*env\(safe-area-inset-bottom/);
   assert.match(css, /min-(?:block-size|height):\s*44px/);

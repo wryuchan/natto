@@ -34,6 +34,7 @@ function makeInitialCutState() {
   };
 }
 
+
 function setNattoInstances(mesh, stage) {
   const configuration = {
     [NATTO_STAGES.WHOLE]: { count: 24, scale: [0.24, 0.14, 0.17], spread: 0.62 },
@@ -79,6 +80,9 @@ export function createCutStation(context = {}) {
   const camera = context.camera;
   if (!camera?.isCamera) throw new TypeError('createCutStation requires a camera');
   const dispatch = typeof context.dispatch === 'function' ? context.dispatch : () => {};
+  const getGreenOnionAmount = typeof context.getGreenOnionAmount === 'function'
+    ? context.getGreenOnionAmount
+    : () => 0.25;
   const ownsMaterials = !context.materials;
   const materials = context.materials ?? createKitchenMaterials();
   const group = new THREE.Group();
@@ -199,6 +203,7 @@ export function createCutStation(context = {}) {
           ingredient,
           fineness: cutState.greenOnion.fineness,
           uniformity: cutState.greenOnion.uniformity,
+          cutPositions: cutState.greenOnion.cuts,
         });
       }
     }
@@ -223,7 +228,7 @@ export function createCutStation(context = {}) {
         dispatch({
           type: 'TRANSFER_TO_BOWL',
           ingredient: owner.ingredient,
-          amount: owner.ingredient === 'natto' ? 1 : 0.25,
+          amount: owner.ingredient === 'natto' ? 1 : getGreenOnionAmount(),
         }, { confirmation: 'transferToBowl' });
         return;
       }
@@ -247,7 +252,7 @@ export function createCutStation(context = {}) {
           inBowl: natto.inBowl,
         },
         greenOnion: {
-          ...cutState.greenOnion,
+          cuts: Array.isArray(greenOnion.cutPositions) ? [...greenOnion.cutPositions] : [],
           fineness: greenOnion.fineness,
           uniformity: greenOnion.uniformity,
           inBowl: greenOnion.inBowl,
@@ -261,4 +266,3 @@ export function createCutStation(context = {}) {
     },
   };
 }
-

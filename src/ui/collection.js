@@ -12,7 +12,7 @@ function actionButton(document, label, action, callback) {
   return element;
 }
 
-export function buildCollectionModel(save = {}, locale = 'en') {
+export function buildCollectionModel(save = {}, locale = 'en', persistenceMode = 'local') {
   const t = createTranslator(locale);
   const saved = save?.achievements ?? {};
   const entries = ACHIEVEMENTS.map(({ id, kind }) => {
@@ -55,6 +55,7 @@ export function buildCollectionModel(save = {}, locale = 'en') {
       resetDone: t('save.resetDone'),
       confirm: t('confirm.accept'),
       cancel: t('confirm.cancel'),
+      disclosure: t(persistenceMode === 'memory' ? 'save.disclosure.memory' : 'save.disclosure.local'),
     },
   };
 }
@@ -69,6 +70,10 @@ export function renderCollection(root, model, callbacks = {}) {
   const heading = document.createElement('h2');
   heading.textContent = model.copy.heading;
   panel.append(heading);
+  const disclosure = document.createElement('p');
+  disclosure.className = 'save-disclosure';
+  disclosure.textContent = model.copy.disclosure;
+  panel.append(disclosure);
 
   const grid = document.createElement('ul');
   grid.className = 'collection-grid';

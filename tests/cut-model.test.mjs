@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { PerspectiveCamera } from 'three';
+import { PerspectiveCamera, Vector3 } from 'three';
 
-import { NATTO_STAGES } from '../src/core/game-state.js';
+import { NATTO_STAGES, createInitialGameState } from '../src/core/game-state.js';
+import { reduceGameState } from '../src/core/state-machine.js';
 import {
   applyKnifeStroke,
   deriveNattoStage,
@@ -121,5 +122,51 @@ test('cut station implements the adapter contract with instanced ingredients', (
   assert.equal(typeof station.applyPointerSample, 'function');
   assert.equal(typeof station.renderState, 'function');
   assert.equal(typeof station.dispose, 'function');
+  station.dispose();
+});
+
+test('station transfer uses the player selected scallion amount through the reducer', () => {
+  const dispatched = [];
+  const station = createCutStation({
+    camera: new PerspectiveCamera(45, 1, 0.1, 100),
+    getGreenOnionAmount: () => 0.65,
+    dispatch: (event) => dispatched.push(event),
+  });
+
+  station.applyPointerSample('end', {}, { type: 'transfer', ingredient: 'greenOnion' });
+  const next = reduceGameState(createInitialGameState(), dispatched[0]);
+
+  assert.equal(dispatched[0].amount, 0.65);
+  assert.equal(next.ingredients.greenOnion.usedAmount, 0.65);
+  station.dispose();
+});
+
+test('station resumes onion scoring from serialized cut positions after recovery', () => {
+  const events = [];
+  const camera = new PerspectiveCamera(45, 1, 0.1, 100);
+  camera.position.set(0, 5, 5);
+  camera.lookAt(0, 0, 0);
+  camera.updateMatrixWorld();
+  const station = createCutStation({ camera, dispatch: (event) => events.push(event) });
+  let state = createInitialGameState();
+  state = reduceGameState(state, {
+    type: 'UPDATE_CUT',
+    ingredient: 'greenOnion',
+    fineness: 0.3,
+    uniformity: 0.8,
+    cutPositions: [0.35, 0.7, 1.05],
+  });
+  state = JSON.parse(JSON.stringify(state));
+  station.renderState(state);
+  const sampleAt = (x, z) => {
+    const projected = new Vector3(x, 0.15, z).project(camera);
+    return { local: { x: (projected.x + 1) / 2, y: (1 - projected.y) / 2 } };
+  };
+  station.applyPointerSample('start', sampleAt(0.9, -0.6), { type: 'knife' });
+  station.applyPointerSample('end', sampleAt(0.9, 0.6), { type: 'knife' });
+  for (const event of events) state = reduceGameState(state, event);
+
+  assert.equal(state.ingredients.greenOnion.cutPositions.length, 4);
+  assert.deepEqual(state.ingredients.greenOnion.cutPositions.slice(0, 3), [0.35, 0.7, 1.05]);
   station.dispose();
 });

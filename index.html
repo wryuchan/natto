@@ -55,7 +55,12 @@
         <button type="button" data-station="mix">混ぜる</button>
         <button type="button" data-station="serve">盛る</button>
       </nav>
+      <label class="onion-amount-control" data-view="cooking">
+        <span data-onion-amount-label>ねぎの量</span>
+        <input type="range" data-action="onion-amount" min="0.05" max="1" step="0.05" value="0.25">
+      </label>
       <button class="finish-button" data-view="cooking" type="button" data-action="finish" aria-label="調理を完成する">完成</button>
+      <button class="restart-button" data-view="cooking" type="button" data-action="restart">最初からやり直す</button>
 
       <section id="result-view" class="view-panel" data-view="result" hidden aria-live="polite"></section>
       <section id="collection-view" class="view-panel" data-view="collection" hidden></section>
@@ -64,6 +69,9 @@
         <form method="dialog" class="dialog-card">
           <h2 id="dialog-title"></h2>
           <p id="dialog-body"></p>
+          <label class="dialog-skip" data-dialog-label="skip-confirmations" hidden>
+            <input type="checkbox" data-dialog="skip-confirmations">
+          </label>
           <div class="dialog-actions">
             <button type="button" data-dialog="cancel">戻る</button>
             <button type="button" data-dialog="accept">進める</button>

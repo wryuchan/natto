@@ -140,6 +140,22 @@ button[disabled] {
   font-weight: 700;
 }
 
+.restart-button,
+.onion-amount-control {
+  width: 100%;
+}
+
+.onion-amount-control {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.4rem 0.1rem;
+  font-weight: 700;
+}
+
+.onion-amount-control input {
+  min-block-size: 44px;
+}
+
 .view-panel {
   min-height: 0;
   overflow: auto;
@@ -287,6 +303,23 @@ dialog::backdrop {
 .dialog-actions {
   justify-content: flex-end;
   flex-wrap: wrap;
+}
+
+.dialog-skip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-block: 0 1rem;
+}
+
+.dialog-skip input {
+  min-block-size: 1.25rem;
+  min-inline-size: 1.25rem;
+}
+
+.save-disclosure {
+  color: #5e5249;
+  line-height: 1.5;
 }
 
 .sr-only {
