@@ -66,6 +66,7 @@ const en = {
     webgl: '3D graphics are unavailable in this browser. Try the latest version of a supported browser.',
     asset: 'Could not load “{asset}”.',
     contextLost: 'Restoring the 3D view. Please wait before continuing.',
+    restoreFailed: 'The 3D view could not be restored. Reload it to try again.',
     storage: 'Saving is unavailable, so progress will be kept only until you close this page.',
     audio: 'Sound is unavailable. The game will continue silently.',
     invalidState: 'Cooking cannot continue. Follow the instructions to reload safely.',
@@ -121,4 +122,3 @@ const en = {
 };
 
 export default en;
-

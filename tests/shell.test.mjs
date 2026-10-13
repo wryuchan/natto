@@ -65,7 +65,13 @@ function shellFixture() {
     body: new FakeElement(),
     accept: new FakeElement({ dialog: 'accept' }),
     cancel: new FakeElement({ dialog: 'cancel' }),
+    canvas: new FakeElement(),
+    recovery: new FakeElement(),
+    recoveryMessage: new FakeElement(),
+    recoveryRetry: new FakeElement({ recovery: 'retry' }),
+    description: new FakeElement(),
   };
+  elements.recovery.hidden = true;
   const selectors = new Map([
     ['[data-action="language"]', elements.language],
     ['[data-action="mute"]', elements.mute],
@@ -77,7 +83,19 @@ function shellFixture() {
     ['#dialog-body', elements.body],
     ['[data-dialog="accept"]', elements.accept],
     ['[data-dialog="cancel"]', elements.cancel],
+    ['#game-canvas', elements.canvas],
+    ['#recovery-overlay', elements.recovery],
+    ['[data-recovery-message]', elements.recoveryMessage],
+    ['[data-recovery="retry"]', elements.recoveryRetry],
   ]);
+  const ownerDocument = {
+    activeElement: null,
+    documentElement: { lang: '' },
+    title: '',
+    querySelector: (selector) => selector === 'meta[name="description"]'
+      ? elements.description
+      : null,
+  };
 
   return {
     stations,
@@ -85,6 +103,7 @@ function shellFixture() {
     root: {
       querySelector: (selector) => selectors.get(selector) ?? null,
       querySelectorAll: (selector) => selector === '[data-station]' ? stations : [],
+      ownerDocument,
     },
   };
 }
@@ -102,6 +121,9 @@ test('shell model exposes translated station state and keeps the source state re
   assert.deepEqual(en.tabs.map(({ label }) => label), ['Cut', 'Mix', 'Serve']);
   assert.equal(ja.state, state);
   assert.equal(en.state, state);
+  assert.equal(ja.metadata.title, '納豆調理ゲーム');
+  assert.equal(en.metadata.title, 'Natto Cooking Game');
+  assert.match(en.metadata.description, /20 titles/);
 
   const resultState = { ...state, phase: 'result' };
   assert.ok(deriveShellModel(resultState, defaultSettings, 'en').tabs.every((tab) => tab.disabled));
@@ -223,6 +245,32 @@ test('shell view routes tab clicks and restores focus when a dialog closes', () 
   assert.equal(FakeElement.activeElement, fixture.elements.accept);
   fixture.elements.cancel.click();
   assert.equal(FakeElement.activeElement, fixture.elements.help);
+  view.dispose();
+});
+
+test('shell renders localized document metadata and an actionable recovery overlay', () => {
+  const fixture = shellFixture();
+  let retries = 0;
+  const view = createShell(fixture.root);
+  view.render(deriveShellModel(createInitialGameState(), defaultSettings, 'en'));
+
+  assert.equal(fixture.root.ownerDocument.title, 'Natto Cooking Game');
+  assert.match(fixture.elements.description.getAttribute('content'), /20 titles/);
+  assert.equal(fixture.elements.canvas.getAttribute('aria-label'), 'Interactive 3D natto cooking area');
+
+  view.showRecovery({
+    message: 'Could not load “rice-bowl”.',
+    retryLabel: 'Reload',
+    actionable: true,
+  }, () => { retries += 1; });
+  assert.equal(fixture.elements.recovery.hidden, false);
+  assert.equal(fixture.elements.recoveryMessage.textContent, 'Could not load “rice-bowl”.');
+  assert.equal(fixture.elements.recoveryRetry.textContent, 'Reload');
+  fixture.elements.recoveryRetry.click();
+  assert.equal(retries, 1);
+
+  view.hideRecovery();
+  assert.equal(fixture.elements.recovery.hidden, true);
   view.dispose();
 });
 

@@ -6,6 +6,7 @@ import { createMixStation } from '../stations/mix-station.js';
 import { createServeStation } from '../stations/serve-station.js';
 import { createPointerRouter } from '../systems/input.js';
 import {
+  createPerformanceMonitor,
   createRenderer,
   getCameraDescriptor,
   resizeRendererToCanvas,
@@ -96,7 +97,8 @@ export function createKitchenScene(canvas, options = {}) {
       ? globalThis.devicePixelRatio
       : 1,
   };
-  const profile = selectQualityProfile({ ...defaultCapabilities, ...options.capabilities });
+  const capabilities = { ...defaultCapabilities, ...options.capabilities };
+  let profile = selectQualityProfile(capabilities);
   const renderer = createRenderer(canvas, profile, options.rendererFactory);
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0xf3dfc2);
@@ -153,13 +155,17 @@ export function createKitchenScene(canvas, options = {}) {
   let animationFrame = null;
   let lastState = null;
   let cameraTransition = null;
+  let lastFrameTime = null;
   const now = typeof options.now === 'function'
     ? options.now
     : () => globalThis.performance?.now?.() ?? Date.now();
+  const reducedMotion = options.reducedMotion === true
+    || (options.reducedMotion !== false
+      && globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true);
   const cameraTransitionMs = typeof options.cameraTransitionMs === 'number'
     && Number.isFinite(options.cameraTransitionMs)
     ? Math.max(0, options.cameraTransitionMs)
-    : 360;
+    : reducedMotion ? 0 : 360;
 
   const currentStation = () => stations.get(activeId);
   const currentDescriptor = () => getCameraDescriptor({
@@ -173,6 +179,19 @@ export function createKitchenScene(canvas, options = {}) {
   };
   setStationVisibility();
   applyCameraDescriptor(camera, cameraTarget, currentDescriptor());
+
+  const applyQualityProfile = (nextProfile) => {
+    profile = nextProfile;
+    renderer.shadowMap.enabled = profile.shadows;
+    keyLight.castShadow = profile.shadows;
+    for (const station of stations.values()) station.setQualityProfile?.(profile);
+    options.performanceOptions?.onChange?.(profile);
+  };
+  const performanceMonitor = createPerformanceMonitor({
+    ...options.performanceOptions,
+    capabilities,
+    onChange: applyQualityProfile,
+  });
 
   const renderFrame = () => {
     if (disposed) return;
@@ -189,8 +208,11 @@ export function createKitchenScene(canvas, options = {}) {
     renderer.render(scene, camera);
   };
 
-  const tick = () => {
+  const tick = (timestamp) => {
     if (paused || disposed) return;
+    const frameTime = typeof timestamp === 'number' && Number.isFinite(timestamp) ? timestamp : now();
+    if (lastFrameTime != null) performanceMonitor.sample(frameTime - lastFrameTime);
+    lastFrameTime = frameTime;
     renderFrame();
     if (typeof globalThis.requestAnimationFrame === 'function') {
       animationFrame = globalThis.requestAnimationFrame(tick);
@@ -214,6 +236,7 @@ export function createKitchenScene(canvas, options = {}) {
     scene,
     camera,
     getQualityProfile: () => profile,
+    samplePerformanceFrame: (frameDurationMs) => performanceMonitor.sample(frameDurationMs),
     getCameraDescriptor: currentDescriptor,
     getStation: (id = activeId) => stations.get(id) ?? null,
     setStation(id) {
@@ -251,6 +274,8 @@ export function createKitchenScene(canvas, options = {}) {
         globalThis.cancelAnimationFrame(animationFrame);
       }
       animationFrame = null;
+      lastFrameTime = null;
+      performanceMonitor.reset();
     },
     resume() {
       if (disposed || !paused) return;

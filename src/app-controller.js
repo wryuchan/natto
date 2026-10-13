@@ -63,6 +63,7 @@ export function createAppController({
   let collectionReturnView = activeView;
   let resultPreviousSave = null;
   let currentResultModel = null;
+  let recoveryPaused = false;
   activeAudio.setMuted?.(activeSettings.muted);
 
   const playEffect = (effect) => {
@@ -111,6 +112,7 @@ export function createAppController({
   };
 
   const dispatch = (event) => {
+    if (recoveryPaused) return false;
     const previous = state;
     const previousSave = event?.type === 'FINISH' ? loadSave() : null;
     const next = reduceGameState(state, event);
@@ -182,14 +184,20 @@ export function createAppController({
       activeScene.setStation?.(state.station);
       activeScene.renderState?.(state);
     },
+    renderSceneFrame() {
+      return activeScene.renderFrame?.();
+    },
     pause() {
+      recoveryPaused = true;
       pointerRouter?.setRecoveryMode?.(true);
       activeScene.pause?.();
     },
     resume() {
       activeScene.resume?.();
       pointerRouter?.setRecoveryMode?.(false);
+      recoveryPaused = false;
     },
+    isPaused: () => recoveryPaused,
     activateAudio() {
       return activeAudio.unlock?.() ?? false;
     },

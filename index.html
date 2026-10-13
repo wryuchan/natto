@@ -3,8 +3,21 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="description" content="納豆を切って、混ぜて、ご飯に盛る短時間の3D調理ゲームです。">
+    <meta name="description" content="納豆を切って、混ぜて、ご飯に盛る短時間の3D調理ゲーム。全20種類の称号を集めよう。">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#f5ead8">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="ja_JP">
+    <meta property="og:title" content="納豆調理ゲーム">
+    <meta property="og:description" content="納豆を切って、混ぜて、ご飯に盛る短時間の3D調理ゲーム。全20種類の称号を集めよう。">
+    <meta property="og:url" content="https://wataryuu.com/natto/">
+    <meta property="og:image" content="https://wataryuu.com/natto/assets/images/ogp.jpg">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="納豆調理ゲーム">
+    <meta name="twitter:description" content="納豆を切って、混ぜて、ご飯に盛る短時間の3D調理ゲーム。全20種類の称号を集めよう。">
+    <meta name="twitter:image" content="https://wataryuu.com/natto/assets/images/ogp.jpg">
     <link rel="canonical" href="https://wataryuu.com/natto/">
+    <link rel="icon" href="./assets/images/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="./styles/app.css">
     <title>納豆調理ゲーム</title>
     <script type="importmap">
@@ -31,6 +44,10 @@
         <canvas id="game-canvas" tabindex="0" aria-label="納豆を調理する3D操作画面"></canvas>
         <p id="app-status" class="sr-only" role="status" aria-live="polite"></p>
         <p class="sr-only" role="alert" aria-live="assertive" data-error-status></p>
+        <section id="recovery-overlay" class="recovery-overlay" role="alert" aria-live="assertive" hidden>
+          <p data-recovery-message></p>
+          <button type="button" data-recovery="retry">再読み込み</button>
+        </section>
       </section>
 
       <nav class="station-nav" data-view="cooking" aria-label="調理ステーション">

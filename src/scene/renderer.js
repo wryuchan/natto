@@ -37,11 +37,53 @@ export function selectQualityProfile(capabilities = {}) {
     id: lowProfile ? 'low' : degradationLevel === 0 ? 'high' : `reduced-${degradationLevel}`,
     degradationLevel,
     pixelRatio: Math.min(rawPixelRatio, lowProfile ? 1.5 : 2),
-    shadows: degradationLevel < 1,
-    threadCount: degradationLevel < 2 ? 72 : 36,
-    foamCount: degradationLevel < 3 ? 48 : 24,
-    antialias: degradationLevel < 4,
+    shadows: degradationLevel < 3,
+    threadCount: degradationLevel < 1 ? 72 : 36,
+    foamCount: degradationLevel < 2 ? 48 : 24,
+    antialias: true,
   });
+}
+
+export function createPerformanceMonitor({
+  capabilities = {},
+  slowFrameMs = 1000 / 28,
+  sustainedFrameCount = 45,
+  onChange = null,
+} = {}) {
+  const requiredSlowFrames = finite(sustainedFrameCount)
+    ? Math.max(1, Math.round(sustainedFrameCount))
+    : 45;
+  const threshold = finite(slowFrameMs) && slowFrameMs > 0 ? slowFrameMs : 1000 / 28;
+  let profile = selectQualityProfile(capabilities);
+  let consecutiveSlowFrames = 0;
+
+  return {
+    getProfile: () => profile,
+    sample(frameDurationMs) {
+      if (!finite(frameDurationMs) || frameDurationMs <= 0) return profile;
+      if (frameDurationMs <= threshold) {
+        consecutiveSlowFrames = 0;
+        return profile;
+      }
+      consecutiveSlowFrames += 1;
+      if (
+        consecutiveSlowFrames < requiredSlowFrames
+        || profile.degradationLevel >= MAX_DEGRADATION_LEVEL
+      ) return profile;
+
+      consecutiveSlowFrames = 0;
+      profile = selectQualityProfile({
+        ...capabilities,
+        lowPower: false,
+        degradationLevel: profile.degradationLevel + 1,
+      });
+      onChange?.(profile);
+      return profile;
+    },
+    reset() {
+      consecutiveSlowFrames = 0;
+    },
+  };
 }
 
 export function getCameraDescriptor({ station = 'cut', width = 1, height = 1 } = {}) {

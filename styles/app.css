@@ -97,6 +97,31 @@ button[disabled] {
   touch-action: none;
 }
 
+.recovery-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: rgb(52 38 29 / 92%);
+  color: #fffaf0;
+  text-align: center;
+}
+
+.recovery-overlay[hidden] {
+  display: none;
+}
+
+.recovery-overlay p {
+  max-width: 32rem;
+  margin: 0;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
 .station-nav {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

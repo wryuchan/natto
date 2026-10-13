@@ -75,7 +75,7 @@ function deepFreeze(value) {
   return value;
 }
 
-test('quality profiles cap DPR and degrade shadows, threads, foam, then antialias', () => {
+test('quality profiles cap DPR and degrade threads, foam, shadows, then resolution', () => {
   const profiles = [0, 1, 2, 3, 4].map((degradationLevel) => selectQualityProfile({
     devicePixelRatio: 3,
     degradationLevel,
@@ -89,10 +89,10 @@ test('quality profiles cap DPR and degrade shadows, threads, foam, then antialia
     antialias: profile.antialias,
   })), [
     { pixelRatio: 2, shadows: true, threadCount: 72, foamCount: 48, antialias: true },
-    { pixelRatio: 2, shadows: false, threadCount: 72, foamCount: 48, antialias: true },
-    { pixelRatio: 2, shadows: false, threadCount: 36, foamCount: 48, antialias: true },
+    { pixelRatio: 2, shadows: true, threadCount: 36, foamCount: 48, antialias: true },
+    { pixelRatio: 2, shadows: true, threadCount: 36, foamCount: 24, antialias: true },
     { pixelRatio: 2, shadows: false, threadCount: 36, foamCount: 24, antialias: true },
-    { pixelRatio: 1.5, shadows: false, threadCount: 36, foamCount: 24, antialias: false },
+    { pixelRatio: 1.5, shadows: false, threadCount: 36, foamCount: 24, antialias: true },
   ]);
 });
 
@@ -185,6 +185,27 @@ test('station changes tween between fixed camera descriptors instead of snapping
 
   now = 400;
   kitchen.renderFrame();
+  assert.deepEqual(kitchen.camera.position.toArray(), [...target]);
+  kitchen.dispose();
+});
+
+test('reduced motion makes the fixed-camera station transition immediate', () => {
+  const canvas = makeCanvas(1280, 800);
+  const renderer = makeRenderer(canvas);
+  const projections = [];
+  const stations = ['cut', 'mix', 'serve'].map((id) => makeStation(id, projections));
+  const kitchen = createKitchenScene(canvas, {
+    stations,
+    rendererFactory: () => renderer,
+    autoStart: false,
+    enableInput: false,
+    reducedMotion: true,
+  });
+  const target = getCameraDescriptor({ station: 'mix', width: 1280, height: 800 }).position;
+
+  kitchen.setStation('mix');
+  kitchen.renderFrame();
+
   assert.deepEqual(kitchen.camera.position.toArray(), [...target]);
   kitchen.dispose();
 });

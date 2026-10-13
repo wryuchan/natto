@@ -160,6 +160,28 @@ test('mix station implements the adapter contract with capped thread and foam vi
   station.dispose();
 });
 
+test('mix station applies degraded visual caps without changing projected game state', () => {
+  const station = createMixStation({
+    camera: new PerspectiveCamera(45, 1, 0.1, 100),
+    dispatch() {},
+    qualityProfile: { threadCount: 72, foamCount: 48 },
+  });
+  const state = createInitialGameState();
+  state.mixing.progress = 1;
+  state.mixing.aeration = 1;
+  const serialized = JSON.stringify(state);
+  const foam = station.group.getObjectByName('mix-foam');
+  const threads = station.group.getObjectByName('mix-threads');
+
+  station.renderState(state);
+  station.setQualityProfile({ threadCount: 36, foamCount: 24 });
+
+  assert.equal(foam.count, 24);
+  assert.equal(threads.children.filter(({ visible }) => visible).length, 36);
+  assert.equal(JSON.stringify(state), serialized);
+  station.dispose();
+});
+
 test('default kitchen installs the interactive mix adapter with the selected quality caps', () => {
   const canvas = {
     clientWidth: 375,

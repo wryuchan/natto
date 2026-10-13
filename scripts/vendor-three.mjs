@@ -1,4 +1,4 @@
-import { copyFile, mkdir, readFile } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -14,9 +14,13 @@ if (metadata.version !== expectedVersion) {
 const outputDirectory = path.join(root, 'vendor', 'three');
 await mkdir(outputDirectory, { recursive: true });
 await Promise.all([
+  copyFile(path.join(packageRoot, 'build', 'three.core.js'), path.join(outputDirectory, 'three.core.js')),
   copyFile(path.join(packageRoot, 'build', 'three.module.js'), path.join(outputDirectory, 'three.module.js')),
   copyFile(path.join(packageRoot, 'LICENSE'), path.join(outputDirectory, 'LICENSE')),
 ]);
 
-console.log(`Vendored Three.js ${metadata.version}`);
+const corePath = path.join(outputDirectory, 'three.core.js');
+const coreSource = await readFile(corePath, 'utf8');
+await writeFile(corePath, coreSource.replaceAll(' \t', '\t'));
 
+console.log(`Vendored Three.js ${metadata.version}`);

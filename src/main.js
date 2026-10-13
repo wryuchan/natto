@@ -4,6 +4,7 @@ import { createKitchenScene } from './scene/kitchen.js';
 import { createAudioSystem } from './systems/audio.js';
 import { LOCALE_KEY, createPersistence } from './systems/persistence.js';
 import { resolveLocale } from './systems/i18n.js';
+import { createRecoveryController } from './systems/recovery.js';
 import { createShell } from './ui/shell.js';
 
 const root = document.querySelector('#app');
@@ -37,29 +38,8 @@ if (root) {
     finish: (opener) => controller?.requestIrreversible('finish', { type: 'FINISH' }, opener),
   });
   const stations = [STATIONS.CUT, STATIONS.MIX, STATIONS.SERVE];
-  const scene = createKitchenScene(canvas, {
-    dispatch(event, metadata) {
-      if (metadata?.confirmation) {
-        controller?.requestIrreversible(metadata.confirmation, event, canvas, metadata.followUp);
-      } else {
-        controller?.dispatch(event);
-      }
-    },
-    playEffect(effect) {
-      controller?.playEffect(effect);
-    },
-    onBackgroundSwipe(direction) {
-      if (!controller) return;
-      const currentIndex = stations.indexOf(controller.getState().station);
-      const delta = direction === 'next' ? 1 : -1;
-      const nextIndex = Math.min(stations.length - 1, Math.max(0, currentIndex + delta));
-      if (nextIndex !== currentIndex) controller.switchStation(stations[nextIndex]);
-    },
-  });
-
   controller = createAppController({
     shell,
-    scene,
     settings: save.settings,
     locale,
     persistence,
@@ -74,6 +54,45 @@ if (root) {
       }
     },
   });
+
+  const buildScene = (state = controller.getState()) => {
+    const nextScene = createKitchenScene(canvas, {
+      autoStart: false,
+      dispatch(event, metadata) {
+        if (metadata?.confirmation) {
+          controller.requestIrreversible(metadata.confirmation, event, canvas, metadata.followUp);
+        } else {
+          controller.dispatch(event);
+        }
+      },
+      playEffect(effect) {
+        controller.playEffect(effect);
+      },
+      onBackgroundSwipe(direction) {
+        const currentIndex = stations.indexOf(controller.getState().station);
+        const delta = direction === 'next' ? 1 : -1;
+        const nextIndex = Math.min(stations.length - 1, Math.max(0, currentIndex + delta));
+        if (nextIndex !== currentIndex) controller.switchStation(stations[nextIndex]);
+      },
+    });
+    nextScene.setStation(state.station);
+    nextScene.renderState(state);
+    return nextScene;
+  };
+  const recovery = createRecoveryController({
+    scene: controller,
+    shell,
+    rebuild: async (state) => buildScene(state),
+  });
+  recovery.attach(canvas);
+
+  try {
+    controller.setScene(buildScene());
+    controller.renderSceneFrame();
+    controller.resume();
+  } catch {
+    recovery.reportWebGLFailure();
+  }
 
   root.dataset.ready = 'true';
   canvas?.focus({ preventScroll: true });

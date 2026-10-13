@@ -39,12 +39,14 @@ export function createMixStation(context = {}) {
     : () => globalThis.performance?.now?.() ?? Date.now();
   const ownsMaterials = !context.materials;
   const materials = context.materials ?? createKitchenMaterials();
-  const threadCount = Math.max(1, Math.round(
+  const threadCapacity = Math.max(1, Math.round(
     context.qualityProfile?.threadCount ?? DEFAULT_THREAD_COUNT,
   ));
-  const foamCount = Math.max(1, Math.round(
+  const foamCapacity = Math.max(1, Math.round(
     context.qualityProfile?.foamCount ?? DEFAULT_FOAM_COUNT,
   ));
+  let threadLimit = threadCapacity;
+  let foamLimit = foamCapacity;
   const group = new THREE.Group();
   group.name = 'mix-station';
 
@@ -129,7 +131,7 @@ export function createMixStation(context = {}) {
 
   const foamGeometry = new THREE.SphereGeometry(1, 8, 6);
   const foamMaterial = new THREE.MeshStandardMaterial({ color: 0xf2ddbd, roughness: 0.8 });
-  const foam = new THREE.InstancedMesh(foamGeometry, foamMaterial, foamCount);
+  const foam = new THREE.InstancedMesh(foamGeometry, foamMaterial, foamCapacity);
   foam.name = 'mix-foam';
   foam.castShadow = false;
   group.add(foam);
@@ -137,9 +139,9 @@ export function createMixStation(context = {}) {
   const foamPosition = new THREE.Vector3();
   const foamScale = new THREE.Vector3();
   const foamRotation = new THREE.Quaternion();
-  for (let index = 0; index < foamCount; index += 1) {
+  for (let index = 0; index < foamCapacity; index += 1) {
     const angle = index * 2.399963;
-    const radius = 1.12 * Math.sqrt((index + 0.5) / foamCount);
+    const radius = 1.12 * Math.sqrt((index + 0.5) / foamCapacity);
     foamPosition.set(Math.cos(angle) * radius, SURFACE_Y + 0.055, Math.sin(angle) * radius);
     const scale = 0.035 + ((index % 5) * 0.006);
     foamScale.set(scale, scale * 0.55, scale);
@@ -152,8 +154,8 @@ export function createMixStation(context = {}) {
   const threadMaterial = new THREE.LineBasicMaterial({ color: 0xead1a6, transparent: true, opacity: 0.72 });
   const threads = new THREE.Group();
   threads.name = 'mix-threads';
-  for (let index = 0; index < threadCount; index += 1) {
-    const angle = (index / threadCount) * Math.PI * 2;
+  for (let index = 0; index < threadCapacity; index += 1) {
+    const angle = (index / threadCapacity) * Math.PI * 2;
     const innerRadius = 0.18 + ((index % 7) * 0.055);
     const outerRadius = Math.min(1.2, innerRadius + 0.3 + ((index % 5) * 0.08));
     const geometry = new THREE.BufferGeometry().setFromPoints([
@@ -222,9 +224,9 @@ export function createMixStation(context = {}) {
     surfaceMaterial.color.copy(materials.natto.color).lerp(new THREE.Color(0xc68b48), eggBlend * 0.72);
     yolk.visible = eggState.added && eggBlend < 0.98;
     yolkMaterial.opacity = eggState.added ? 1 - eggBlend : 0;
-    const visibleFoam = Math.min(foamCount, Math.round(foamCount * aeration));
+    const visibleFoam = Math.min(foamLimit, Math.round(foamLimit * aeration));
     foam.count = visibleFoam;
-    const visibleThreads = Math.min(threadCount, Math.round(threadCount * progress));
+    const visibleThreads = Math.min(threadLimit, Math.round(threadLimit * progress));
     threads.children.forEach((thread, index) => {
       thread.visible = index < visibleThreads;
     });
@@ -285,6 +287,17 @@ export function createMixStation(context = {}) {
       mixing = { ...state.mixing };
       if (state.ingredients.egg.added) eggState = { stage: 'opened', added: true };
       renderEgg();
+      renderMixing();
+    },
+    setQualityProfile(profile) {
+      threadLimit = Math.min(
+        threadCapacity,
+        Math.max(1, Math.round(profile?.threadCount ?? threadCapacity)),
+      );
+      foamLimit = Math.min(
+        foamCapacity,
+        Math.max(1, Math.round(profile?.foamCount ?? foamCapacity)),
+      );
       renderMixing();
     },
     dispose() {
