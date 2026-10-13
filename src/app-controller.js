@@ -1,5 +1,6 @@
-import { PHASES, createInitialGameState } from './core/game-state.js';
-import { reduceGameState } from './core/state-machine.js';
+import { PHASES, STATIONS, createInitialGameState } from './core/game-state.js';
+import { canApplyEvent, reduceGameState } from './core/state-machine.js';
+import { deriveNattoStage } from './stations/cut-model.js';
 import { buildCollectionModel, renderCollection } from './ui/collection.js';
 import { buildResultModel, buildShareText, renderResults } from './ui/results.js';
 import { deriveShellModel } from './ui/shell.js';
@@ -67,6 +68,7 @@ export function createAppController({
   let currentResultModel = null;
   let recoveryPaused = false;
   let greenOnionAmount = 0.25;
+  let liveStatusId = 'ready';
   activeAudio.setMuted?.(activeSettings.muted);
 
   const playEffect = (effect) => {
@@ -113,6 +115,11 @@ export function createAppController({
     if (projectScene) activeScene.renderState?.(state);
     return nextModel;
   };
+  const announceStatus = (id = liveStatusId) => {
+    liveStatusId = id;
+    const nextModel = model();
+    shell.announce?.(nextModel.messages[id] ?? nextModel.messages.ready);
+  };
 
   const dispatch = (event) => {
     if (recoveryPaused) return false;
@@ -123,6 +130,7 @@ export function createAppController({
     state = next;
     if (previous.station !== next.station) activeScene.setStation?.(next.station);
     render();
+    if (liveStatusId !== 'ready') announceStatus('ready');
     const effect = EVENT_EFFECTS[event.type];
     if (effect) playEffect(effect);
     if (previous.phase !== PHASES.RESULT && next.phase === PHASES.RESULT) {
@@ -152,6 +160,7 @@ export function createAppController({
       activeLocale = nextLocale;
       saveLocale?.(nextLocale);
       render({ projectScene: false });
+      announceStatus();
       if (activeView === 'result') renderResultView();
       if (activeView === 'collection') renderCollectionView();
       return true;
@@ -179,6 +188,12 @@ export function createAppController({
       shell.showTutorial?.(model().tutorial, controller.completeTutorial, opener);
     },
     requestIrreversible(kind, event, opener = null, followUpEvent = null) {
+      if (!canApplyEvent(state, event)) {
+        if (kind === 'transferToRice' && !state.ingredients.natto.inBowl) {
+          announceStatus('moveNattoToBowl');
+        }
+        return false;
+      }
       const copy = model().confirmations[kind];
       const accept = ({ skip = false } = {}) => {
         if (skip) {
@@ -191,6 +206,53 @@ export function createAppController({
       };
       if (!copy) return accept();
       shell.showConfirmation?.(copy, accept, opener);
+      return false;
+    },
+    performAlternativeAction(slot, opener = null) {
+      if (state.station === STATIONS.CUT) {
+        if (slot === 'primary') {
+          const cutProgress = Math.min(1, state.ingredients.natto.cutProgress + 0.1);
+          return dispatch({
+            type: 'UPDATE_CUT',
+            ingredient: 'natto',
+            cutProgress,
+            cutStage: deriveNattoStage(cutProgress),
+          });
+        }
+        if (slot === 'secondary') {
+          return controller.requestIrreversible('transferToBowl', {
+            type: 'TRANSFER_TO_BOWL', ingredient: 'natto', amount: 1,
+          }, opener);
+        }
+      }
+      if (state.station === STATIONS.MIX) {
+        if (slot === 'primary') {
+          const progress = Math.min(1, state.mixing.progress + 0.12);
+          return dispatch({
+            type: 'UPDATE_MIX',
+            progress,
+            circularity: Math.max(state.mixing.circularity, 0.9),
+            speedStability: Math.max(state.mixing.speedStability, 0.85),
+            clockwiseRatio: Math.max(state.mixing.clockwiseRatio, 0.8),
+            aeration: Math.min(1, state.mixing.aeration + 0.1),
+          });
+        }
+        if (slot === 'secondary') return dispatch({ type: 'ADD_EGG' });
+      }
+      if (state.station === STATIONS.SERVE && slot === 'primary') {
+        if (state.serving.transferredRatio <= 0) {
+          return controller.requestIrreversible('transferToRice', {
+            type: 'TRANSFER_TO_RICE', confirmed: true, transferredRatio: 0.55,
+          }, opener, {
+            type: 'UPDATE_SERVE', coverage: 0.58, centerOffset: 0.08, spillRatio: 0,
+          });
+        }
+        return dispatch({
+          type: 'UPDATE_SERVE',
+          transferredRatio: Math.min(1, state.serving.transferredRatio + 0.2),
+          coverage: Math.min(1, state.serving.coverage + 0.1),
+        });
+      }
       return false;
     },
     setScene(nextScene) {

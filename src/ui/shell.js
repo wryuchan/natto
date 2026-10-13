@@ -33,6 +33,9 @@ export function deriveShellModel(state, settings = {}, locale = 'en', operation 
         help: t('aria.help'),
         stationTabs: t('aria.stationTabs'),
         finish: t('aria.finish'),
+        settings: t('aria.settings'),
+        cooking: t('aria.cooking'),
+        alternativeControls: t('aria.alternativeControls'),
       },
     },
     tabs: STATION_IDS.map((id) => ({
@@ -51,6 +54,19 @@ export function deriveShellModel(state, settings = {}, locale = 'en', operation 
       greenOnionAmount: Number.isFinite(operation.greenOnionAmount) ? operation.greenOnionAmount : 0.25,
       greenOnionAmountLabel: t('shell.greenOnionAmount'),
       finishDisabled: state.phase !== PHASES.COOKING || state.serving.transferredRatio <= 0,
+      alternative: state.station === STATIONS.CUT
+        ? [
+          { slot: 'primary', label: t('shell.alternative.cutNatto'), disabled: state.ingredients.natto.inBowl },
+          { slot: 'secondary', label: t('shell.alternative.transferNatto'), disabled: state.ingredients.natto.inBowl },
+        ]
+        : state.station === STATIONS.MIX
+          ? [
+            { slot: 'primary', label: t('shell.alternative.mixNatto'), disabled: state.serving.transferredRatio > 0 },
+            { slot: 'secondary', label: t('shell.alternative.addEgg'), disabled: state.ingredients.egg.added || state.serving.transferredRatio > 0 },
+          ]
+          : [
+            { slot: 'primary', label: t('shell.alternative.serveRice'), disabled: state.serving.transferredRatio >= 1 },
+          ],
     },
     tutorial: {
       visible: settings.tutorialSeen !== true,
@@ -63,6 +79,10 @@ export function deriveShellModel(state, settings = {}, locale = 'en', operation 
       start: t('tutorial.start'),
     },
     confirmations: Object.fromEntries(CONFIRMATION_IDS.map((id) => [id, confirmation(id)])),
+    messages: {
+      ready: t('shell.ready'),
+      moveNattoToBowl: t('shell.moveNattoToBowl'),
+    },
     readyMessage: t('shell.ready'),
   };
 }
@@ -84,6 +104,10 @@ export function createShell(root, callbacks = {}) {
   const canvas = root.querySelector('#game-canvas');
   const appTitle = root.querySelector('.app-title');
   const stationNav = root.querySelector('.station-nav');
+  const appTools = root.querySelector('.app-tools');
+  const gameStage = root.querySelector('.game-stage');
+  const alternativeControls = root.querySelector('[data-alternative-controls]');
+  const alternativeButtons = [...root.querySelectorAll('[data-alternative-action]')];
   const status = root.querySelector('#app-status');
   const dialog = root.querySelector('#app-dialog');
   const dialogTitle = root.querySelector('#dialog-title');
@@ -109,6 +133,12 @@ export function createShell(root, callbacks = {}) {
 
   for (const button of stationButtons) {
     listen(button, 'click', () => callbacks.switchStation?.(button.dataset.station));
+  }
+  for (const button of alternativeButtons) {
+    listen(button, 'click', (event) => callbacks.alternativeAction?.(
+      button.dataset.alternativeAction,
+      event.currentTarget,
+    ));
   }
   listen(languageButton, 'click', (event) => callbacks.toggleLocale?.(event.currentTarget));
   listen(muteButton, 'click', (event) => callbacks.toggleMute?.(event.currentTarget));
@@ -153,6 +183,10 @@ export function createShell(root, callbacks = {}) {
       skipConfirmationLabel.textContent = copy.skipNext ?? '';
       skipConfirmationLabel.prepend(skipConfirmation);
     }
+    if (skipConfirmation) {
+      if (copy.skipNext) skipConfirmation.setAttribute('aria-label', copy.skipNext);
+      else skipConfirmation.removeAttribute('aria-label');
+    }
     if (!dialog.open) dialog.showModal();
     acceptButton.focus();
   };
@@ -188,6 +222,15 @@ export function createShell(root, callbacks = {}) {
         onionAmount.value = String(model.controls.greenOnionAmount);
         onionAmount.setAttribute('aria-label', model.controls.greenOnionAmountLabel);
       }
+      for (const button of alternativeButtons) {
+        const action = model.controls.alternative.find(
+          ({ slot }) => slot === button.dataset.alternativeAction,
+        );
+        button.hidden = !action;
+        if (!action) continue;
+        button.textContent = action.label;
+        button.disabled = action.disabled;
+      }
       const documentElement = root.ownerDocument?.documentElement;
       if (documentElement) documentElement.lang = model.locale;
       if (root.ownerDocument) {
@@ -204,6 +247,9 @@ export function createShell(root, callbacks = {}) {
       if (appTitle) appTitle.textContent = model.metadata.title;
       canvas?.setAttribute?.('aria-label', model.metadata.aria.canvas);
       stationNav?.setAttribute?.('aria-label', model.metadata.aria.stationTabs);
+      appTools?.setAttribute?.('aria-label', model.metadata.aria.settings);
+      gameStage?.setAttribute?.('aria-label', model.metadata.aria.cooking);
+      alternativeControls?.setAttribute?.('aria-label', model.metadata.aria.alternativeControls);
     },
     showConfirmation: showDialog,
     showView(view) {

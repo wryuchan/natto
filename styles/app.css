@@ -13,6 +13,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 body {
   min-height: 100svh;
   margin: 0;
@@ -45,10 +49,12 @@ button[disabled] {
 
 .app-shell {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-auto-rows: auto;
   gap: 0.75rem;
   width: min(100%, 64rem);
-  min-height: 100svh;
+  height: 100svh;
+  min-height: 0;
   margin-inline: auto;
   padding:
     max(0.75rem, var(--safe-top))
@@ -94,6 +100,7 @@ button[disabled] {
   width: 100%;
   height: 100%;
   min-height: 18rem;
+  contain: size;
   touch-action: none;
 }
 
@@ -125,6 +132,12 @@ button[disabled] {
 .station-nav {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.alternative-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
 }
 
 .station-nav button[aria-selected="true"] {

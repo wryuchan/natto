@@ -10,15 +10,23 @@ const en = {
     restart: 'Start over',
     greenOnionAmount: 'Scallion amount',
     ready: 'Ready to cook',
+    moveNattoToBowl: 'Move the natto to the mixing bowl before serving.',
+    alternative: {
+      cutNatto: 'Chop natto',
+      transferNatto: 'Move natto to bowl',
+      mixNatto: 'Mix in a circle',
+      addEgg: 'Add egg',
+      serveRice: 'Serve over rice',
+    },
   },
   tutorial: {
     page1: {
       title: 'Cut and mix',
-      body: 'Chop the ingredients, add egg or seasonings, and stir the natto with chopsticks.',
+      body: 'Drag the knife across ingredients to chop. Tap the egg twice, hold seasonings, then drag the chopsticks in a circle to mix. You can use the cooking buttons instead.',
     },
     page2: {
       title: 'Serve over rice',
-      body: 'Tilt the bowl to serve your natto over rice, then discover the title your bowl earned.',
+      body: 'Drag the serving bowl toward the rice to tilt and pour, or use the serving button, then discover the title your bowl earned.',
     },
     next: 'Next',
     back: 'Back',
@@ -89,6 +97,9 @@ const en = {
     help: 'Open the cooking guide',
     stationTabs: 'Cooking stations',
     finish: 'Finish cooking',
+    settings: 'Settings',
+    cooking: 'Cooking area',
+    alternativeControls: 'Keyboard cooking controls',
     close: 'Close',
   },
   seo: {

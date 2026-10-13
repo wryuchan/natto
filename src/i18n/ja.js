@@ -10,15 +10,23 @@ const ja = {
     restart: '最初からやり直す',
     greenOnionAmount: 'ねぎの量',
     ready: '調理の準備ができました',
+    moveNattoToBowl: '盛り付ける前に、納豆を混ぜ鉢へ移してください。',
+    alternative: {
+      cutNatto: '納豆を刻む',
+      transferNatto: '納豆を鉢へ移す',
+      mixNatto: '円を描いて混ぜる',
+      addEgg: '卵を加える',
+      serveRice: 'ご飯へ盛る',
+    },
   },
   tutorial: {
     page1: {
       title: '切って、混ぜよう',
-      body: '食材を切り、卵や調味料を加えて、箸で納豆を混ぜます。',
+      body: '包丁を食材の上でドラッグして刻みます。卵は2回タップ、調味料は長押しし、箸を円を描くようにドラッグして混ぜます。調理ボタンでも操作できます。',
     },
     page2: {
       title: 'ご飯へ盛ろう',
-      body: '鉢を傾けてご飯へ盛り、できあがった一膳の称号を見つけましょう。',
+      body: '盛り付け鉢をご飯へ向けてドラッグして傾けるか、盛り付けボタンを使い、できあがった一膳の称号を見つけましょう。',
     },
     next: '次へ',
     back: '戻る',
@@ -89,6 +97,9 @@ const ja = {
     help: '操作ガイドを開く',
     stationTabs: '調理ステーション',
     finish: '調理を完成する',
+    settings: '設定',
+    cooking: '調理画面',
+    alternativeControls: 'キーボード調理操作',
     close: '閉じる',
   },
   seo: {

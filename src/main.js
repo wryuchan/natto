@@ -38,6 +38,7 @@ if (root) {
     collection: () => controller?.openCollection(),
     finish: (opener) => controller?.requestIrreversible('finish', { type: 'FINISH' }, opener),
     restart: (opener) => controller?.requestIrreversible('restart', { type: 'RESET_RUN' }, opener),
+    alternativeAction: (slot, opener) => controller?.performAlternativeAction(slot, opener),
     setGreenOnionAmount: (amount) => controller?.setGreenOnionAmount(amount),
   });
   const stations = [STATIONS.CUT, STATIONS.MIX, STATIONS.SERVE];

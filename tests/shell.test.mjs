@@ -50,6 +50,8 @@ class FakeElement extends EventTarget {
   click() {
     this.dispatchEvent(new Event('click'));
   }
+
+  prepend() {}
 }
 
 function shellFixture() {
@@ -69,7 +71,13 @@ function shellFixture() {
     accept: new FakeElement({ dialog: 'accept' }),
     cancel: new FakeElement({ dialog: 'cancel' }),
     skip: new FakeElement({ dialog: 'skip-confirmations' }),
+    skipLabel: new FakeElement({ dialogLabel: 'skip-confirmations' }),
     canvas: new FakeElement(),
+    appTools: new FakeElement(),
+    gameStage: new FakeElement(),
+    alternativeControls: new FakeElement(),
+    alternativePrimary: new FakeElement({ alternativeAction: 'primary' }),
+    alternativeSecondary: new FakeElement({ alternativeAction: 'secondary' }),
     recovery: new FakeElement(),
     recoveryMessage: new FakeElement(),
     recoveryRetry: new FakeElement({ recovery: 'retry' }),
@@ -91,7 +99,11 @@ function shellFixture() {
     ['[data-dialog="accept"]', elements.accept],
     ['[data-dialog="cancel"]', elements.cancel],
     ['[data-dialog="skip-confirmations"]', elements.skip],
+    ['[data-dialog-label="skip-confirmations"]', elements.skipLabel],
     ['#game-canvas', elements.canvas],
+    ['.app-tools', elements.appTools],
+    ['.game-stage', elements.gameStage],
+    ['[data-alternative-controls]', elements.alternativeControls],
     ['#recovery-overlay', elements.recovery],
     ['[data-recovery-message]', elements.recoveryMessage],
     ['[data-recovery="retry"]', elements.recoveryRetry],
@@ -110,7 +122,13 @@ function shellFixture() {
     elements,
     root: {
       querySelector: (selector) => selectors.get(selector) ?? null,
-      querySelectorAll: (selector) => selector === '[data-station]' ? stations : [],
+      querySelectorAll: (selector) => {
+        if (selector === '[data-station]') return stations;
+        if (selector === '[data-alternative-action]') {
+          return [elements.alternativePrimary, elements.alternativeSecondary];
+        }
+        return [];
+      },
       ownerDocument,
     },
   };
@@ -145,6 +163,21 @@ test('first run has exactly two tutorial pages and saved completion suppresses i
 
   const returning = deriveShellModel(state, { ...defaultSettings, tutorialSeen: true }, 'en');
   assert.equal(returning.tutorial.visible, false);
+});
+
+test('tutorial names the real drag and circular gestures and offers button alternatives in both locales', () => {
+  const state = createInitialGameState();
+  const ja = deriveShellModel(state, defaultSettings, 'ja');
+  const en = deriveShellModel(state, defaultSettings, 'en');
+
+  assert.match(ja.tutorial.pages[0].body, /ドラッグ/);
+  assert.match(ja.tutorial.pages[0].body, /円/);
+  assert.match(ja.tutorial.pages[0].body, /ボタン/);
+  assert.match(ja.tutorial.pages[1].body, /ドラッグ/);
+  assert.match(en.tutorial.pages[0].body, /drag/i);
+  assert.match(en.tutorial.pages[0].body, /circle/i);
+  assert.match(en.tutorial.pages[0].body, /button/i);
+  assert.match(en.tutorial.pages[1].body, /drag/i);
 });
 
 test('irreversible copy is present unless confirmations are skipped', () => {
@@ -273,6 +306,42 @@ test('shell confirmation forwards the accepted opt-out choice', () => {
   view.dispose();
 });
 
+test('confirmation opt-out stays hidden without copy and has an accessible name when shown', () => {
+  const fixture = shellFixture();
+  const view = createShell(fixture.root);
+
+  view.showConfirmation({
+    title: 'Notice', body: 'Body', accept: 'Continue', cancel: 'Back',
+  }, () => {});
+  assert.equal(fixture.elements.skipLabel.hidden, true);
+  assert.equal(fixture.elements.skip.getAttribute('aria-label'), null);
+
+  view.showConfirmation({
+    title: 'Notice', body: 'Body', accept: 'Continue', cancel: 'Back',
+    skipNext: 'Do not show this again',
+  }, () => {});
+  assert.equal(fixture.elements.skipLabel.hidden, false);
+  assert.equal(fixture.elements.skip.getAttribute('aria-label'), 'Do not show this again');
+  view.dispose();
+});
+
+test('shell renders and routes keyboard-accessible alternatives for the active station', () => {
+  const fixture = shellFixture();
+  const actions = [];
+  const view = createShell(fixture.root, {
+    alternativeAction: (slot, opener) => actions.push([slot, opener]),
+  });
+
+  view.render(deriveShellModel(createInitialGameState(), defaultSettings, 'en'));
+  assert.equal(fixture.elements.alternativeControls.getAttribute('aria-label'), 'Keyboard cooking controls');
+  assert.equal(fixture.elements.alternativePrimary.textContent, 'Chop natto');
+  assert.equal(fixture.elements.alternativeSecondary.textContent, 'Move natto to bowl');
+  assert.equal(fixture.elements.alternativePrimary.hidden, false);
+  fixture.elements.alternativePrimary.click();
+  assert.deepEqual(actions, [['primary', fixture.elements.alternativePrimary]]);
+  view.dispose();
+});
+
 test('shell localizes the visible scallion amount control', () => {
   const fixture = shellFixture();
   const view = createShell(fixture.root);
@@ -311,6 +380,59 @@ test('controller persists accepted confirmation opt-out and resets only the curr
   assert.deepEqual(collection, { homestyle_bowl: { unlockedAt: '2026-10-12T00:00:00.000Z' } });
 });
 
+test('serve is guarded before confirmation until natto is in the bowl and guidance follows locale', () => {
+  const confirmations = [];
+  const announcements = [];
+  const controller = createAppController({
+    locale: 'en',
+    settings: { ...defaultSettings, tutorialSeen: true },
+    shell: {
+      render() {}, showTutorial() {}, showView() {},
+      showConfirmation: (copy) => confirmations.push(copy),
+      announce: (message) => announcements.push(message),
+    },
+  });
+
+  const requested = controller.requestIrreversible('transferToRice', {
+    type: 'TRANSFER_TO_RICE', confirmed: true, transferredRatio: 0.5,
+  });
+  assert.equal(requested, false);
+  assert.equal(confirmations.length, 0);
+  assert.equal(announcements.at(-1), 'Move the natto to the mixing bowl before serving.');
+
+  controller.setLocale('ja');
+  assert.equal(announcements.at(-1), '盛り付ける前に、納豆を混ぜ鉢へ移してください。');
+});
+
+test('alternative buttons complete the required keyboard-only cooking path', () => {
+  const confirmations = [];
+  const controller = createAppController({
+    locale: 'en',
+    settings: { ...defaultSettings, tutorialSeen: true },
+    shell: {
+      render() {}, showTutorial() {}, showView() {}, announce() {},
+      showConfirmation: (_copy, accept) => confirmations.push(accept),
+    },
+  });
+
+  assert.equal(controller.performAlternativeAction('primary'), true);
+  assert.equal(controller.getState().ingredients.natto.cutProgress, 0.1);
+  controller.performAlternativeAction('secondary');
+  confirmations.pop()();
+  assert.equal(controller.getState().ingredients.natto.inBowl, true);
+
+  controller.switchStation('mix');
+  assert.equal(controller.performAlternativeAction('primary'), true);
+  assert.equal(controller.getState().mixing.progress > 0, true);
+  assert.equal(controller.performAlternativeAction('secondary'), true);
+  assert.equal(controller.getState().ingredients.egg.added, true);
+
+  controller.switchStation('serve');
+  controller.performAlternativeAction('primary');
+  confirmations.pop()();
+  assert.equal(controller.getState().serving.transferredRatio > 0, true);
+});
+
 test('shell renders localized document metadata and an actionable recovery overlay', () => {
   const fixture = shellFixture();
   let retries = 0;
@@ -320,6 +442,8 @@ test('shell renders localized document metadata and an actionable recovery overl
   assert.equal(fixture.root.ownerDocument.title, 'Natto Cooking Game');
   assert.match(fixture.elements.description.getAttribute('content'), /20 titles/);
   assert.equal(fixture.elements.canvas.getAttribute('aria-label'), 'Interactive 3D natto cooking area');
+  assert.equal(fixture.elements.appTools.getAttribute('aria-label'), 'Settings');
+  assert.equal(fixture.elements.gameStage.getAttribute('aria-label'), 'Cooking area');
 
   view.showRecovery({
     message: 'Could not load “rice-bowl”.',
@@ -335,6 +459,29 @@ test('shell renders localized document metadata and an actionable recovery overl
   view.hideRecovery();
   assert.equal(fixture.elements.recovery.hidden, true);
   view.dispose();
+});
+
+test('locale switching immediately refreshes live status and settings/cooking ARIA in both directions', () => {
+  const fixture = shellFixture();
+  const shell = createShell(fixture.root);
+  const controller = createAppController({
+    shell,
+    locale: 'ja',
+    settings: { ...defaultSettings, tutorialSeen: true },
+  });
+
+  controller.setLocale('en');
+  assert.equal(fixture.elements.status.textContent, 'Ready to cook');
+  assert.equal(fixture.elements.appTools.getAttribute('aria-label'), 'Settings');
+  assert.equal(fixture.elements.gameStage.getAttribute('aria-label'), 'Cooking area');
+  assert.equal(fixture.elements.alternativeControls.getAttribute('aria-label'), 'Keyboard cooking controls');
+
+  controller.setLocale('ja');
+  assert.equal(fixture.elements.status.textContent, '調理の準備ができました');
+  assert.equal(fixture.elements.appTools.getAttribute('aria-label'), '設定');
+  assert.equal(fixture.elements.gameStage.getAttribute('aria-label'), '調理画面');
+  assert.equal(fixture.elements.alternativeControls.getAttribute('aria-label'), 'キーボード調理操作');
+  controller.dispose();
 });
 
 test('static shell has labeled live regions, dialogs, safe areas, and wrapping 44px controls', async () => {
@@ -355,6 +502,9 @@ test('static shell has labeled live regions, dialogs, safe areas, and wrapping 4
   assert.match(css, /--safe-bottom:\s*env\(safe-area-inset-bottom/);
   assert.match(css, /min-(?:block-size|height):\s*44px/);
   assert.doesNotMatch(css, /white-space:\s*nowrap/);
+  assert.match(css, /\[hidden\]\s*\{[^}]*display:\s*none\s*!important/s);
+  assert.match(css, /\.app-shell\s*\{[^}]*height:\s*100svh/s);
+  assert.match(css, /#game-canvas\s*\{[^}]*contain:\s*size/s);
 
   const fixedPixelWidths = [...css.matchAll(/(?:^|[;{])\s*(?:width|max-width):\s*(\d+)px/gm)]
     .map((match) => Number(match[1]));
