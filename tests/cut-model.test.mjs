@@ -11,6 +11,7 @@ import {
   scoreOnionCuts,
 } from '../src/stations/cut-model.js';
 import { createCutStation } from '../src/stations/cut-station.js';
+import { createKitchenScene } from '../src/scene/kitchen.js';
 
 function initialCutState() {
   return {
@@ -139,6 +140,39 @@ test('station transfer uses the player selected scallion amount through the redu
   assert.equal(dispatched[0].amount, 0.65);
   assert.equal(next.ingredients.greenOnion.usedAmount, 0.65);
   station.dispose();
+});
+
+test('kitchen route transfers the selected scallion amount through the reducer', () => {
+  const dispatched = [];
+  const canvas = {
+    clientWidth: 375,
+    clientHeight: 500,
+    addEventListener() {},
+    removeEventListener() {},
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 375, height: 500 }),
+  };
+  const renderer = {
+    shadowMap: {}, setPixelRatio() {}, setSize() {}, render() {}, dispose() {},
+  };
+  const kitchen = createKitchenScene(canvas, {
+    autoStart: false,
+    enableInput: false,
+    rendererFactory: () => renderer,
+    getGreenOnionAmount: () => 0.65,
+    dispatch: (event) => dispatched.push(event),
+  });
+
+  kitchen.getStation('cut').applyPointerSample(
+    'end',
+    {},
+    { type: 'transfer', ingredient: 'greenOnion' },
+  );
+  const next = reduceGameState(createInitialGameState(), dispatched[0]);
+
+  assert.equal(dispatched[0].type, 'TRANSFER_TO_BOWL');
+  assert.equal(dispatched[0].amount, 0.65);
+  assert.equal(next.ingredients.greenOnion.usedAmount, 0.65);
+  kitchen.dispose();
 });
 
 test('station resumes onion scoring from serialized cut positions after recovery', () => {

@@ -133,6 +133,7 @@ export function createKitchenScene(canvas, options = {}) {
       materials,
       dispatch: options.dispatch,
       playEffect: options.playEffect,
+      getGreenOnionAmount: options.getGreenOnionAmount,
       qualityProfile: profile,
       now: options.now,
     };
