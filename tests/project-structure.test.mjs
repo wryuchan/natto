@@ -83,3 +83,14 @@ test('license page credits Three.js and links its vendored license', async () =>
   assert.match(html, /Three\.js/i);
   assert.match(html, /href=["']\.\/vendor\/three\/LICENSE["']/i);
 });
+
+test('mobile shell keeps a playable canvas and allows document scrolling', async () => {
+  const css = await read('styles/app.css');
+  const mobileRule = css.match(
+    /@media\s*\(max-width:\s*34rem\)\s*\{([\s\S]*?)\n\}\n\n@media/
+  )?.[0] ?? '';
+
+  assert.match(css, /@media\s*\(max-width:\s*34rem\)[\s\S]*min-height:\s*max\(16rem,\s*45svh\)/);
+  assert.doesNotMatch(mobileRule, /#game-canvas\s*\{[^}]*min-height:\s*0/);
+  assert.match(css, /\.app-shell\s*\{[^}]*min-height:\s*100svh/);
+});
