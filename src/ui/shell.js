@@ -153,11 +153,19 @@ export function createShell(root, callbacks = {}) {
     if (dialog?.open) dialog.close();
     else restoreTarget?.focus?.();
   };
+  const closeThen = (action, options) => {
+    if (dialog?.open) {
+      dialog.addEventListener('close', () => action?.(options), { once: true });
+      dialog.close();
+    } else {
+      restoreTarget?.focus?.();
+      action?.(options);
+    }
+  };
   listen(acceptButton, 'click', () => {
     const action = pendingAction;
     pendingAction = null;
-    closeDialog();
-    action?.({ skip: skipConfirmation?.checked === true });
+    closeThen(action, { skip: skipConfirmation?.checked === true });
   });
   listen(cancelButton, 'click', () => {
     pendingAction = null;

@@ -306,6 +306,29 @@ test('shell confirmation forwards the accepted opt-out choice', () => {
   view.dispose();
 });
 
+test('tutorial completion survives asynchronous dialog close events', async () => {
+  const fixture = shellFixture();
+  fixture.elements.dialog.close = () => {
+    fixture.elements.dialog.open = false;
+    queueMicrotask(() => fixture.elements.dialog.dispatchEvent(new Event('close')));
+  };
+  const view = createShell(fixture.root);
+  let completions = 0;
+
+  view.showTutorial(
+    deriveShellModel(createInitialGameState(), defaultSettings, 'en').tutorial,
+    () => { completions += 1; },
+  );
+  fixture.elements.accept.click();
+  await Promise.resolve();
+  assert.equal(fixture.elements.accept.textContent, 'Start cooking');
+  fixture.elements.accept.click();
+  await Promise.resolve();
+
+  assert.equal(completions, 1);
+  view.dispose();
+});
+
 test('confirmation opt-out stays hidden without copy and has an accessible name when shown', () => {
   const fixture = shellFixture();
   const view = createShell(fixture.root);

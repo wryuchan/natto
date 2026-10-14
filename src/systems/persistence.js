@@ -36,15 +36,23 @@ function isAchievementRecord(value) {
     && SCORE_KEYS.every((key) => isScore(value.bestScores[key]));
 }
 
-function isValidSave(value) {
-  return isObject(value)
-    && value.version === 1
-    && isObject(value.achievements)
-    && Object.entries(value.achievements).every(([id, record]) =>
+function normalizeSave(value) {
+  if (!isObject(value)
+    || value.version !== 1
+    || !isObject(value.achievements)
+    || !Object.entries(value.achievements).every(([id, record]) =>
       ACHIEVEMENT_IDS.has(id) && isAchievementRecord(record)
     )
-    && isObject(value.settings)
-    && SETTING_KEYS.every((key) => typeof value.settings[key] === 'boolean');
+    || !isObject(value.settings)
+    || !SETTING_KEYS.every((key) => !Object.hasOwn(value.settings, key)
+      || typeof value.settings[key] === 'boolean')) {
+    return null;
+  }
+
+  return {
+    ...value,
+    settings: { ...emptySave().settings, ...value.settings },
+  };
 }
 
 function normalizedScores(scores) {
@@ -86,8 +94,9 @@ export function createPersistence(storage) {
         return clone(memoryState);
       }
       const parsed = JSON.parse(raw);
-      if (!isValidSave(parsed)) return fallBackToMemory();
-      memoryState = clone(parsed);
+      const normalized = normalizeSave(parsed);
+      if (!normalized) return fallBackToMemory();
+      memoryState = clone(normalized);
       return clone(memoryState);
     } catch {
       return fallBackToMemory();

@@ -87,6 +87,40 @@ test('valid version-1 data round-trips under the save key', () => {
   assert.equal(JSON.parse(storage.values.get(SAVE_KEY)).settings.muted, true);
 });
 
+test('legacy version-1 settings gain defaults and persist tutorial completion locally', () => {
+  const legacySave = {
+    version: 1,
+    achievements: {
+      homestyle_bowl: {
+        unlockedAt: '2026-10-12T00:00:00.000Z',
+        bestOverall: 50,
+        bestScores: { cutting: 50, mixing: 50, taste: 50, serving: 50 },
+      },
+    },
+    settings: { muted: true },
+  };
+  const storage = new FakeStorage({ [SAVE_KEY]: JSON.stringify(legacySave) });
+  const adapter = createPersistence(storage);
+
+  assert.equal(adapter.mode, 'local');
+  assert.deepEqual(adapter.load(), {
+    ...legacySave,
+    settings: { ...DEFAULT_SETTINGS, muted: true },
+  });
+  assert.equal(adapter.mode, 'local');
+
+  adapter.updateSettings({ tutorialSeen: true });
+  const normalizedSave = {
+    ...legacySave,
+    settings: { ...DEFAULT_SETTINGS, muted: true, tutorialSeen: true },
+  };
+  assert.deepEqual(JSON.parse(storage.values.get(SAVE_KEY)), normalizedSave);
+
+  const reloaded = createPersistence(storage);
+  assert.equal(reloaded.mode, 'local');
+  assert.deepEqual(reloaded.load(), normalizedSave);
+});
+
 test('unlock timestamp is set once while each best score only increases', () => {
   const storage = new FakeStorage();
   const adapter = createPersistence(storage);
@@ -115,8 +149,13 @@ test('unlock timestamp is set once while each best score only increases', () => 
   });
 });
 
-test('malformed JSON and unknown versions use memory without overwriting source data', () => {
-  for (const raw of ['{broken', JSON.stringify({ version: 2 })]) {
+test('malformed data, known setting types, and unknown versions use memory without overwriting source data', () => {
+  const malformedTutorialSetting = {
+    version: 1,
+    achievements: {},
+    settings: { ...DEFAULT_SETTINGS, tutorialSeen: 'true' },
+  };
+  for (const raw of ['{broken', JSON.stringify({ version: 2 }), JSON.stringify(malformedTutorialSetting)]) {
     const storage = new FakeStorage({ [SAVE_KEY]: raw });
     const adapter = createPersistence(storage);
 
