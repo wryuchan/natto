@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 import { createInitialGameState } from '../src/core/game-state.js';
 import { createAppController } from '../src/app-controller.js';
+import { createPersistence } from '../src/systems/persistence.js';
 import { createShell, deriveShellModel } from '../src/ui/shell.js';
 
 const defaultSettings = {
@@ -134,6 +135,13 @@ function shellFixture() {
   };
 }
 
+function deferDialogClose(fixture) {
+  fixture.elements.dialog.close = () => {
+    fixture.elements.dialog.open = false;
+    queueMicrotask(() => fixture.elements.dialog.dispatchEvent(new Event('close')));
+  };
+}
+
 test('shell model exposes translated station state and keeps the source state reference', () => {
   const state = createInitialGameState();
   const ja = deriveShellModel(state, defaultSettings, 'ja');
@@ -163,6 +171,31 @@ test('first run has exactly two tutorial pages and saved completion suppresses i
 
   const returning = deriveShellModel(state, { ...defaultSettings, tutorialSeen: true }, 'en');
   assert.equal(returning.tutorial.visible, false);
+});
+
+test('tutorial completion persists through reload in both locales', () => {
+  for (const locale of ['en', 'ja']) {
+    const values = new Map();
+    const storage = {
+      getItem: (key) => values.get(key) ?? null,
+      setItem: (key, value) => values.set(key, value),
+      removeItem: (key) => values.delete(key),
+    };
+    const persistence = createPersistence(storage);
+    const controller = createAppController({
+      locale,
+      settings: persistence.load().settings,
+      persistence,
+      shell: { render() {}, showTutorial() {}, announce() {}, showView() {} },
+    });
+
+    controller.completeTutorial();
+    controller.dispose();
+
+    const reloaded = createPersistence(storage).load();
+    assert.equal(reloaded.settings.tutorialSeen, true, locale);
+    assert.equal(deriveShellModel(createInitialGameState(), reloaded.settings, locale).tutorial.visible, false, locale);
+  }
 });
 
 test('tutorial names the real drag and circular gestures and offers button alternatives in both locales', () => {
@@ -308,10 +341,7 @@ test('shell confirmation forwards the accepted opt-out choice', () => {
 
 test('tutorial completion survives asynchronous dialog close events', async () => {
   const fixture = shellFixture();
-  fixture.elements.dialog.close = () => {
-    fixture.elements.dialog.open = false;
-    queueMicrotask(() => fixture.elements.dialog.dispatchEvent(new Event('close')));
-  };
+  deferDialogClose(fixture);
   const view = createShell(fixture.root);
   let completions = 0;
 
@@ -327,6 +357,53 @@ test('tutorial completion survives asynchronous dialog close events', async () =
 
   assert.equal(completions, 1);
   view.dispose();
+});
+
+test('delayed dialog close preserves accepted confirmation choice and focus while cancel does nothing', async () => {
+  const fixture = shellFixture();
+  deferDialogClose(fixture);
+  const accepted = [];
+  const view = createShell(fixture.root);
+
+  fixture.elements.help.focus();
+  view.showConfirmation({
+    title: 'Continue?', body: 'This cannot be undone.', accept: 'Continue', cancel: 'Back',
+    skipNext: 'Do not show this again',
+  }, (options) => accepted.push(options), fixture.elements.help);
+  fixture.elements.skip.checked = true;
+  fixture.elements.accept.click();
+  assert.deepEqual(accepted, []);
+  await Promise.resolve();
+  assert.deepEqual(accepted, [{ skip: true }]);
+  assert.equal(FakeElement.activeElement, fixture.elements.help);
+
+  view.showConfirmation(
+    { title: 'Continue?', body: 'This cannot be undone.', accept: 'Continue', cancel: 'Back' },
+    (options) => accepted.push(options),
+    fixture.elements.help,
+  );
+  fixture.elements.cancel.click();
+  await Promise.resolve();
+  assert.deepEqual(accepted, [{ skip: true }]);
+  assert.equal(FakeElement.activeElement, fixture.elements.help);
+  view.dispose();
+});
+
+test('disposing before a delayed close prevents its accepted action', async () => {
+  const fixture = shellFixture();
+  deferDialogClose(fixture);
+  const view = createShell(fixture.root);
+  let accepted = 0;
+
+  view.showConfirmation(
+    { title: 'Continue?', body: 'This cannot be undone.', accept: 'Continue', cancel: 'Back' },
+    () => { accepted += 1; },
+  );
+  fixture.elements.accept.click();
+  view.dispose();
+  await Promise.resolve();
+
+  assert.equal(accepted, 0);
 });
 
 test('confirmation opt-out stays hidden without copy and has an accessible name when shown', () => {

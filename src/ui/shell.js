@@ -122,6 +122,8 @@ export function createShell(root, callbacks = {}) {
   const removers = [];
   const views = [...root.querySelectorAll('[data-view]')];
   let pendingAction = null;
+  let pendingPostCloseAction = null;
+  let pendingPostCloseOptions = null;
   let restoreTarget = null;
   let recoveryAction = null;
 
@@ -150,31 +152,41 @@ export function createShell(root, callbacks = {}) {
   listen(recoveryRetry, 'click', () => recoveryAction?.());
 
   const closeDialog = () => {
-    if (dialog?.open) dialog.close();
-    else restoreTarget?.focus?.();
-  };
-  const closeThen = (action, options) => {
     if (dialog?.open) {
-      dialog.addEventListener('close', () => action?.(options), { once: true });
       dialog.close();
-    } else {
-      restoreTarget?.focus?.();
-      action?.(options);
+      return true;
     }
+    restoreTarget?.focus?.();
+    restoreTarget = null;
+    return false;
   };
   listen(acceptButton, 'click', () => {
-    const action = pendingAction;
+    pendingPostCloseAction = pendingAction;
+    pendingPostCloseOptions = { skip: skipConfirmation?.checked === true };
     pendingAction = null;
-    closeThen(action, { skip: skipConfirmation?.checked === true });
+    if (!closeDialog()) {
+      const action = pendingPostCloseAction;
+      const options = pendingPostCloseOptions;
+      pendingPostCloseAction = null;
+      pendingPostCloseOptions = null;
+      action?.(options);
+    }
   });
   listen(cancelButton, 'click', () => {
     pendingAction = null;
+    pendingPostCloseAction = null;
+    pendingPostCloseOptions = null;
     closeDialog();
   });
   listen(dialog, 'close', () => {
+    const action = pendingPostCloseAction;
+    const options = pendingPostCloseOptions;
+    pendingPostCloseAction = null;
+    pendingPostCloseOptions = null;
     restoreTarget?.focus?.();
     restoreTarget = null;
     pendingAction = null;
+    action?.(options);
   });
 
   const showDialog = (copy, action, opener) => {
@@ -303,6 +315,8 @@ export function createShell(root, callbacks = {}) {
     dispose() {
       for (const remove of removers.splice(0)) remove();
       pendingAction = null;
+      pendingPostCloseAction = null;
+      pendingPostCloseOptions = null;
       restoreTarget = null;
       recoveryAction = null;
     },
