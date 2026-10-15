@@ -52,5 +52,5 @@
 
 ## Pending validation
 
-- **PENDING — physical Android Chrome:** no physical Android device was available in this session. Manufacturer/model, Android version, Chrome version, viewport, devicePixelRatio, URL bar shown/hidden, portrait/landscape rotation, scallion edge cutting, empty-bowl rendering, and serving framing remain unverified on hardware.
-- Firebase Hosting publish and public-URL smoke testing were not performed.
+- **PENDING — post-deploy physical Android Chrome:** no physical Android device was available in this session. The user declined temporary LAN sharing and will perform this verification after production deployment, so it is not a Phase 0 pre-deploy blocker. Manufacturer/model, Android version, Chrome version, viewport, devicePixelRatio, URL bar shown/hidden, portrait/landscape rotation, scallion edge cutting, empty-bowl rendering, and serving framing remain unverified on hardware.
+- **PENDING — external publish gate:** Firebase Hosting publish and the public `https://wataryuu.com/natto/` smoke test were not performed. They require the separate external publish approval and workflow.
