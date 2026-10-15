@@ -624,12 +624,12 @@ test('static shell has labeled live regions, dialogs, safe areas, and wrapping 4
   assert.ok(fixedPixelWidths.every((width) => width <= 375));
 });
 
-test('layout contract keeps a definite viewport track and excludes canvas buffer size from grid sizing', async () => {
+test('layout contract keeps a minimum viewport track and excludes canvas buffer size from grid sizing', async () => {
   const css = await readFile(new URL('../styles/app.css', import.meta.url), 'utf8');
   const shellRule = css.match(/\.app-shell\s*\{([^}]*)\}/s)?.[1] ?? '';
   const canvasRule = css.match(/#game-canvas\s*\{([^}]*)\}/s)?.[1] ?? '';
 
-  assert.match(shellRule, /(?:^|\n)\s*height:\s*100svh\s*;/);
-  assert.doesNotMatch(shellRule, /min-height:\s*100svh/);
+  assert.match(shellRule, /(?:^|\n)\s*min-height:\s*100svh\s*;/);
+  assert.match(shellRule, /(?:^|\n)\s*height:\s*auto\s*;/);
   assert.match(canvasRule, /(?:^|\n)\s*contain:\s*size\s*;/);
 });
