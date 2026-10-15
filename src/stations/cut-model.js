@@ -7,9 +7,23 @@ export const CUT_BOARD_BOUNDS = Object.freeze({
   maxY: 1.65,
 });
 
+export const GREEN_ONION_LAYOUT = Object.freeze({
+  minX: 0.28,
+  maxX: 1.53,
+  minY: -0.07,
+  maxY: 0.07,
+});
+
+const GREEN_ONION_INTERACTION_MARGIN = 0.12;
+
 export const CUT_INGREDIENT_BOUNDS = Object.freeze({
   natto: Object.freeze({ minX: -1.6, maxX: -0.2, minY: -0.68, maxY: 0.68 }),
-  greenOnion: Object.freeze({ minX: 0.2, maxX: 1.6, minY: -0.42, maxY: 0.42 }),
+  greenOnion: Object.freeze({
+    minX: GREEN_ONION_LAYOUT.minX - GREEN_ONION_INTERACTION_MARGIN,
+    maxX: GREEN_ONION_LAYOUT.maxX + GREEN_ONION_INTERACTION_MARGIN,
+    minY: GREEN_ONION_LAYOUT.minY - GREEN_ONION_INTERACTION_MARGIN,
+    maxY: GREEN_ONION_LAYOUT.maxY + GREEN_ONION_INTERACTION_MARGIN,
+  }),
 });
 
 const NATTO_PROGRESS_PER_STROKE = 0.1;
@@ -123,4 +137,3 @@ export function applyKnifeStroke(cutState, stroke) {
     },
   };
 }
-

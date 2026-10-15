@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { NATTO_STAGES, STATIONS } from '../core/game-state.js';
 import { createKitchenMaterials, disposeKitchenMaterials } from '../scene/materials.js';
 import { createVesselGeometry } from '../scene/vessels.js';
-import { applyKnifeStroke } from './cut-model.js';
+import { applyKnifeStroke, GREEN_ONION_LAYOUT } from './cut-model.js';
 
 const BOARD_Y = 0.15;
 const NATTO_MAX_INSTANCES = 72;
@@ -62,14 +62,22 @@ function setNattoInstances(mesh, stage) {
 
 function setOnionInstances(mesh, fineness) {
   const visibleCount = Math.max(6, Math.min(ONION_MAX_INSTANCES, 6 + Math.round(fineness * 26)));
-  const segmentWidth = 1.25 / visibleCount;
+  const segmentWidth = (GREEN_ONION_LAYOUT.maxX - GREEN_ONION_LAYOUT.minX) / visibleCount;
   const matrix = new THREE.Matrix4();
   const position = new THREE.Vector3();
   const rotation = new THREE.Quaternion();
-  const scale = new THREE.Vector3(segmentWidth * 0.82, 0.1, 0.14);
+  const scale = new THREE.Vector3(
+    segmentWidth * 0.82,
+    0.1,
+    GREEN_ONION_LAYOUT.maxY - GREEN_ONION_LAYOUT.minY,
+  );
   mesh.count = visibleCount;
   for (let index = 0; index < visibleCount; index += 1) {
-    position.set(0.28 + segmentWidth * (index + 0.5), 0.27, 0);
+    position.set(
+      GREEN_ONION_LAYOUT.minX + segmentWidth * (index + 0.5),
+      0.27,
+      (GREEN_ONION_LAYOUT.minY + GREEN_ONION_LAYOUT.maxY) / 2,
+    );
     rotation.setFromAxisAngle(new THREE.Vector3(0, 1, 0), (index % 3 - 1) * 0.04);
     matrix.compose(position, rotation, scale);
     mesh.setMatrixAt(index, matrix);

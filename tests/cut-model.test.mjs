@@ -1,13 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { PerspectiveCamera, Vector3 } from 'three';
+import { Matrix4, PerspectiveCamera, Vector3 } from 'three';
 
 import { NATTO_STAGES, createInitialGameState } from '../src/core/game-state.js';
 import { reduceGameState } from '../src/core/state-machine.js';
 import {
   applyKnifeStroke,
+  CUT_INGREDIENT_BOUNDS,
   deriveNattoStage,
+  GREEN_ONION_LAYOUT,
   scoreOnionCuts,
 } from '../src/stations/cut-model.js';
 import { createCutStation } from '../src/stations/cut-station.js';
@@ -108,6 +110,63 @@ test('an ingredient already transferred to the bowl rejects further cuts', () =>
 
   assert.equal(applyKnifeStroke(nattoTransferred, nattoStroke()), nattoTransferred);
   assert.equal(applyKnifeStroke(onionTransferred, onionStroke), onionTransferred);
+});
+
+test('green onion instances and hit bounds share the visible layout', () => {
+  const station = createCutStation({
+    camera: new PerspectiveCamera(45, 1, 0.1, 100),
+    dispatch() {},
+  });
+  const onionInstances = station.group.getObjectByName('onion-instances');
+  const matrix = new Matrix4();
+  const center = new Vector3();
+  const bounds = CUT_INGREDIENT_BOUNDS.greenOnion;
+  const state = createInitialGameState();
+  state.ingredients.greenOnion.fineness = 1;
+  station.renderState(state);
+
+  for (let index = 0; index < onionInstances.count; index += 1) {
+    onionInstances.getMatrixAt(index, matrix);
+    center.setFromMatrixPosition(matrix);
+    assert.ok(center.x >= GREEN_ONION_LAYOUT.minX && center.x <= GREEN_ONION_LAYOUT.maxX);
+    assert.ok(center.z >= GREEN_ONION_LAYOUT.minY && center.z <= GREEN_ONION_LAYOUT.maxY);
+    for (const x of [-0.5, 0.5]) {
+      for (const z of [-0.5, 0.5]) {
+        const corner = new Vector3(x, 0, z).applyMatrix4(matrix);
+        assert.ok(corner.x >= bounds.minX && corner.x <= bounds.maxX);
+        assert.ok(corner.z >= bounds.minY && corner.z <= bounds.maxY);
+      }
+    }
+  }
+
+  const interactionMargin = 0.08;
+  assert.ok(bounds.minX <= GREEN_ONION_LAYOUT.minX - interactionMargin);
+  assert.ok(bounds.maxX >= GREEN_ONION_LAYOUT.maxX + interactionMargin);
+  assert.ok(bounds.minY <= GREEN_ONION_LAYOUT.minY - interactionMargin);
+  assert.ok(bounds.maxY >= GREEN_ONION_LAYOUT.maxY + interactionMargin);
+  station.dispose();
+});
+
+test('visible green onion left, center, and right strokes all advance cutting', () => {
+  const strokeXs = [
+    GREEN_ONION_LAYOUT.minX,
+    (GREEN_ONION_LAYOUT.minX + GREEN_ONION_LAYOUT.maxX) / 2,
+    GREEN_ONION_LAYOUT.maxX,
+  ];
+
+  for (const x of strokeXs) {
+    const state = initialCutState();
+    const next = applyKnifeStroke(state, {
+      ingredient: 'greenOnion',
+      points: [
+        { x, y: GREEN_ONION_LAYOUT.minY - 0.2 },
+        { x, y: GREEN_ONION_LAYOUT.maxY + 0.2 },
+      ],
+    });
+
+    assert.notEqual(next, state, `expected stroke at x=${x} to register`);
+    assert.equal(next.greenOnion.cuts.length, 1);
+  }
 });
 
 test('cut station implements the adapter contract with instanced ingredients', () => {
