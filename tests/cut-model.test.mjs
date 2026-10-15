@@ -36,6 +36,32 @@ const nattoStroke = (points = [
   { x: -0.9, y: 0.75 },
 ]) => ({ ingredient: 'natto', points });
 
+function onionVisualExtrema(onionInstances) {
+  const matrix = new Matrix4();
+  const corner = new Vector3();
+  const extrema = {
+    minX: Infinity,
+    maxX: -Infinity,
+    minY: Infinity,
+    maxY: -Infinity,
+  };
+
+  for (let index = 0; index < onionInstances.count; index += 1) {
+    onionInstances.getMatrixAt(index, matrix);
+    for (const x of [-0.5, 0.5]) {
+      for (const z of [-0.5, 0.5]) {
+        corner.set(x, 0, z).applyMatrix4(matrix);
+        extrema.minX = Math.min(extrema.minX, corner.x);
+        extrema.maxX = Math.max(extrema.maxX, corner.x);
+        extrema.minY = Math.min(extrema.minY, corner.z);
+        extrema.maxY = Math.max(extrema.maxY, corner.z);
+      }
+    }
+  }
+
+  return extrema;
+}
+
 test('strokes outside the board or named ingredient preserve cut state identity', () => {
   const state = initialCutState();
   const outsideBoard = nattoStroke([
@@ -148,25 +174,34 @@ test('green onion instances and hit bounds share the visible layout', () => {
 });
 
 test('visible green onion left, center, and right strokes all advance cutting', () => {
+  const station = createCutStation({
+    camera: new PerspectiveCamera(45, 1, 0.1, 100),
+    dispatch() {},
+  });
+  const visible = onionVisualExtrema(station.group.getObjectByName('onion-instances'));
   const strokeXs = [
-    GREEN_ONION_LAYOUT.minX,
-    (GREEN_ONION_LAYOUT.minX + GREEN_ONION_LAYOUT.maxX) / 2,
-    GREEN_ONION_LAYOUT.maxX,
+    visible.minX,
+    (visible.minX + visible.maxX) / 2,
+    visible.maxX,
   ];
+
+  assert.notEqual(visible.minX, GREEN_ONION_LAYOUT.minX);
+  assert.notEqual(visible.maxX, GREEN_ONION_LAYOUT.maxX);
 
   for (const x of strokeXs) {
     const state = initialCutState();
     const next = applyKnifeStroke(state, {
       ingredient: 'greenOnion',
       points: [
-        { x, y: GREEN_ONION_LAYOUT.minY - 0.2 },
-        { x, y: GREEN_ONION_LAYOUT.maxY + 0.2 },
+        { x, y: visible.minY - 0.2 },
+        { x, y: visible.maxY + 0.2 },
       ],
     });
 
     assert.notEqual(next, state, `expected stroke at x=${x} to register`);
     assert.equal(next.greenOnion.cuts.length, 1);
   }
+  station.dispose();
 });
 
 test('cut station implements the adapter contract with instanced ingredients', () => {
