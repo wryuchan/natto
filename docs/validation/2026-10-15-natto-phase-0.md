@@ -53,4 +53,11 @@
 ## Pending validation
 
 - **PENDING — post-deploy physical Android Chrome:** no physical Android device was available in this session. The user declined temporary LAN sharing and will perform this verification after production deployment, so it is not a Phase 0 pre-deploy blocker. Manufacturer/model, Android version, Chrome version, viewport, devicePixelRatio, URL bar shown/hidden, portrait/landscape rotation, scallion edge cutting, empty-bowl rendering, and serving framing remain unverified on hardware.
-- **PENDING — external publish gate:** Firebase Hosting publish and the public `https://wataryuu.com/natto/` smoke test were not performed. They require the separate external publish approval and workflow.
+
+## Production deployment and public smoke
+
+- `npm run deploy:hosting` completed from an isolated clean parent worktree after updating submodules to their remote heads. The deployed natto source was commit `c49a3ee`.
+- Firebase Hosting prepared 521 files, uploaded the changed files, finalized the version, and reported `Deploy complete!` for project `starwatch-646e5`.
+- Public Chrome smoke testing opened `https://wataryuu.com/natto/` with title `Natto Cooking Game`. The runtime exposed the 3D canvas, all three stations, scallion amount control with maximum `1`, restart control, confirmation opt-out control, and the local license link. No browser warning or error was recorded.
+- At a 360 × 800 production viewport, the canvas measured 336 × 360 px with computed height and minimum height both `360px`; the document scroll height was 879 px. This confirms the deployed mobile layout contract, but is not a substitute for the pending physical Android check.
+- `https://wataryuu.com/natto/licenses.html` loaded with title `ライセンス | 納豆調理ゲーム`, identified `Three.js 0.186.0`, linked the bundled MIT license, and produced no browser warning or error.
