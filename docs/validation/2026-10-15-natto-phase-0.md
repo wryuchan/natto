@@ -4,6 +4,7 @@
 
 - `npm test`: exit 0; 145 tests passed, 0 failed, 0 skipped, 0 todo.
 - `git diff --check`: exit 0; no output.
+- Follow-up after the hosting gate was resolved: `npm test` again exited 0 with 145 passed and 0 failed; `git diff --check` again exited 0 with no output.
 - `npm start`: the sandboxed attempt exited 1 with `listen EPERM` on `127.0.0.1:4173`. The approved local-server retry started successfully and served this worktree at `http://127.0.0.1:4174/`.
 
 ## Browser checks
@@ -46,10 +47,10 @@
 ## Hosting preparation
 
 - From `/Users/apple/Project/wataryuu`, `npm run hosting:prepare` ran in the sandbox and exited 1 before regeneration with `EPERM: operation not permitted, unlink '/Users/apple/Project/wataryuu/hosting/404.html'`.
-- A request to rerun the same command with permission to replace the parent repository's generated `hosting/` tree was not authorized in this session. No successful hosting generation was observed, and no generated hosting output was added to the natto commit.
+- The controller then reran the command with explicit permission to replace the parent repository's generated `hosting/` tree. It exited 0 and printed `Prepared Firebase hosting package at /Users/apple/Project/wataryuu/hosting`.
+- Generated hosting output was not added to the natto source commit.
 
 ## Pending validation
 
 - **PENDING — physical Android Chrome:** no physical Android device was available in this session. Manufacturer/model, Android version, Chrome version, viewport, devicePixelRatio, URL bar shown/hidden, portrait/landscape rotation, scallion edge cutting, empty-bowl rendering, and serving framing remain unverified on hardware.
-- **PENDING — parent hosting generation:** rerun `/Users/apple/Project/wataryuu` `npm run hosting:prepare` with explicit authorization for replacement of the parent `hosting/` tree, and record an exit-0 result.
 - Firebase Hosting publish and public-URL smoke testing were not performed.
