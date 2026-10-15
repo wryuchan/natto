@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  Box3,
   Group,
   PCFShadowMap,
   PerspectiveCamera,
@@ -17,6 +18,7 @@ import {
   selectQualityProfile,
 } from '../src/scene/renderer.js';
 import { createKitchenScene } from '../src/scene/kitchen.js';
+import { createServeStation } from '../src/stations/serve-station.js';
 
 function makeCanvas(width = 375, height = 500) {
   const listeners = new Map();
@@ -85,6 +87,14 @@ function deepFreeze(value) {
   return value;
 }
 
+function boxCorners(box) {
+  return [box.min.x, box.max.x].flatMap((x) => (
+    [box.min.y, box.max.y].flatMap((y) => (
+      [box.min.z, box.max.z].map((z) => new Vector3(x, y, z))
+    ))
+  ));
+}
+
 test('quality profiles cap DPR and degrade threads, foam, shadows, then resolution', () => {
   const profiles = [0, 1, 2, 3, 4].map((degradationLevel) => selectQualityProfile({
     devicePixelRatio: 3,
@@ -127,6 +137,22 @@ test('portrait and desktop cameras frame the same station coordinate system', ()
 
 test('portrait and desktop serve cameras target the midpoint between both vessels', () => {
   const expectedCenterX = (-2 + 0.45) / 2;
+  const station = createServeStation({
+    camera: new PerspectiveCamera(45, 1, 0.1, 100),
+    dispatch() {},
+  });
+  const state = createInitialGameState();
+  state.serving = {
+    transferredRatio: 1,
+    coverage: 0.9,
+    centerOffset: 0.7,
+    spillRatio: 0.4,
+  };
+  station.renderState(state);
+  station.group.updateWorldMatrix(true, true);
+  const framedCorners = ['rice-bowl', 'rice', 'pouring-bowl'].flatMap((name) => (
+    boxCorners(new Box3().setFromObject(station.group.getObjectByName(name)))
+  ));
   const views = [[375, 812], [1280, 800]].map(([width, height]) => {
     const descriptor = getCameraDescriptor({ station: 'serve', width, height });
     const camera = new PerspectiveCamera(
@@ -147,11 +173,13 @@ test('portrait and desktop serve cameras target the midpoint between both vessel
   assert.ok(portrait.target[1] >= 0.04 && portrait.target[1] <= 0.86);
   assert.ok(desktop.target[1] >= 0.04 && desktop.target[1] <= 0.86);
   for (const { camera } of views) {
-    const leftEdge = new Vector3(-3.05, 0.04, 0.36).project(camera);
-    const rightEdge = new Vector3(2.17, 0.04, 0).project(camera);
-    assert.ok(leftEdge.x >= -1);
-    assert.ok(rightEdge.x <= 1);
+    for (const corner of framedCorners) {
+      const projected = corner.clone().project(camera);
+      assert.ok(projected.x >= -1 && projected.x <= 1);
+      assert.ok(projected.y >= -1 && projected.y <= 1);
+    }
   }
+  station.dispose();
 });
 
 test('renderer resize reads the canvas client box and not window dimensions', () => {

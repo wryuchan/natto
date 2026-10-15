@@ -168,6 +168,20 @@ test('serving vessels meet the counter and rice stays inside while cresting the 
   assert.ok(riceBox.min.z > riceBowlBox.min.z);
   assert.ok(riceBox.max.z < riceBowlBox.max.z);
   assert.ok(riceBox.max.y > riceBowlBox.max.y);
+
+  const tiltedState = createInitialGameState();
+  tiltedState.serving = {
+    transferredRatio: 1,
+    coverage: 0.9,
+    centerOffset: 0.7,
+    spillRatio: 0.4,
+  };
+  station.renderState(tiltedState);
+  station.group.updateWorldMatrix(true, true);
+  const tiltedPouringBowlBox = new Box3().setFromObject(
+    station.group.getObjectByName('pouring-bowl'),
+  );
+  assert.ok(Math.abs(tiltedPouringBowlBox.min.y - 0.04) < 1e-6);
   station.dispose();
 });
 

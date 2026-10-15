@@ -98,7 +98,7 @@ export function getCameraDescriptor({ station = 'cut', width = 1, height = 1 } =
     orientation,
     position: Object.freeze(basePosition.map((value, index) => value + offset[index])),
     target: Object.freeze([...target]),
-    fov: portrait ? 48 : 38,
+    fov: portrait ? (station === 'serve' ? 54 : 48) : 38,
     near: 0.1,
     far: 100,
     worldScale: 1,
