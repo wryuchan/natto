@@ -12,7 +12,7 @@ import {
   resizeRendererToCanvas,
   selectQualityProfile,
 } from './renderer.js';
-import { createKitchenMaterials, disposeKitchenMaterials } from './materials.js';
+import { WOOD_TILE_WORLD_SIZE, createKitchenMaterials, disposeKitchenMaterials } from './materials.js';
 import { createVesselGeometry } from './vessels.js';
 
 const STATION_IDS = Object.freeze([STATIONS.CUT, STATIONS.MIX, STATIONS.SERVE]);
@@ -55,7 +55,13 @@ function createPlaceholderStation(id, materials) {
       footRadius: 1.15,
       segments: 40,
     }), materials.ceramicAccent, [0, 0, 0]);
-    addMesh(group, new THREE.SphereGeometry(1.22, 40, 20, 0, Math.PI * 2, 0, Math.PI / 2), materials.rice, [0, 0.72, 0]);
+    const rice = addMesh(
+      group,
+      new THREE.SphereGeometry(1.22, 40, 20, 0, Math.PI * 2, 0, Math.PI / 2),
+      materials.rice,
+      [0, 0.72, 0],
+    );
+    rice.scale.y = 0.52;
     addMesh(group, createVesselGeometry({
       innerRadius: 0.85,
       outerRadius: 1.05,
@@ -120,19 +126,34 @@ export function createKitchenScene(canvas, options = {}) {
   let profile = selectQualityProfile(capabilities);
   const renderer = createRenderer(canvas, profile, options.rendererFactory);
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0xf3dfc2);
-  scene.fog = new THREE.Fog(0xf3dfc2, 12, 28);
+  scene.background = new THREE.Color(0xd8cec0);
+  scene.fog = new THREE.Fog(0xd8cec0, 18, 44);
 
   const materials = createKitchenMaterials();
   const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
   const cameraTarget = new THREE.Vector3();
+  const counterSize = { width: 48, depth: 60 };
+  materials.woodTexture.repeat.set(
+    counterSize.width / WOOD_TILE_WORLD_SIZE,
+    counterSize.depth / WOOD_TILE_WORLD_SIZE,
+  );
   const counter = addMesh(
     scene,
-    new THREE.BoxGeometry(9, 0.5, 6.4),
+    new THREE.BoxGeometry(counterSize.width, 0.5, counterSize.depth),
     materials.counter,
-    [0, -0.35, 0],
+    [0, -0.35, 5],
   );
+  counter.name = 'counter';
   counter.receiveShadow = true;
+  const backdrop = addMesh(
+    scene,
+    new THREE.PlaneGeometry(96, 52),
+    materials.backdrop,
+    [0, 22, -24],
+  );
+  backdrop.name = 'backdrop';
+  backdrop.castShadow = false;
+  backdrop.receiveShadow = false;
 
   const hemisphere = new THREE.HemisphereLight(0xfff8df, 0x77543f, 2.1);
   scene.add(hemisphere);

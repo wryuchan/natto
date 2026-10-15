@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { Box3, PerspectiveCamera } from 'three';
+import {
+  Box3,
+  Matrix4,
+  PerspectiveCamera,
+  Quaternion,
+  Vector3,
+} from 'three';
 
 import { createAppController } from '../src/app-controller.js';
 import { createInitialGameState } from '../src/core/game-state.js';
@@ -182,6 +188,55 @@ test('serving vessels meet the counter and rice stays inside while cresting the 
     station.group.getObjectByName('pouring-bowl'),
   );
   assert.ok(Math.abs(tiltedPouringBowlBox.min.y - 0.04) < 1e-6);
+  station.dispose();
+});
+
+test('served natto follows the flattened rice surface even at maximum lateral offset', () => {
+  const station = createServeStation({
+    camera: new PerspectiveCamera(45, 1, 0.1, 100),
+    dispatch() {},
+  });
+  const state = createInitialGameState();
+  state.serving = {
+    transferredRatio: 1,
+    coverage: 1,
+    centerOffset: 1,
+    spillRatio: 0,
+  };
+  station.renderState(state);
+
+  const rice = station.group.getObjectByName('rice');
+  const patches = station.group.getObjectByName('serving-patches');
+  const riceRadius = rice.geometry.parameters.radius;
+  const moundHeight = riceRadius * rice.scale.y;
+  const matrix = new Matrix4();
+  const position = new Vector3();
+  const rotation = new Quaternion();
+  const scale = new Vector3();
+  const expectedNormal = new Vector3();
+  const patchUp = new Vector3();
+
+  assert.ok(rice.scale.y >= 0.5 && rice.scale.y <= 0.6);
+  assert.ok(patches.count > 0);
+  for (let index = 0; index < patches.count; index += 1) {
+    patches.getMatrixAt(index, matrix);
+    matrix.decompose(position, rotation, scale);
+    const dx = position.x - rice.position.x;
+    const dz = position.z - rice.position.z;
+    const radialRatio = Math.hypot(dx, dz) / riceRadius;
+    const surfaceY = rice.position.y + moundHeight * Math.sqrt(1 - (radialRatio ** 2));
+    expectedNormal.set(
+      dx / (riceRadius ** 2),
+      (surfaceY - rice.position.y) / (moundHeight ** 2),
+      dz / (riceRadius ** 2),
+    ).normalize();
+    patchUp.set(0, 1, 0).applyQuaternion(rotation);
+
+    assert.ok(radialRatio <= 0.94, `patch ${index} escaped the rice footprint`);
+    assert.ok(position.y > surfaceY, `patch ${index} is buried in the rice`);
+    assert.ok(position.y - surfaceY < 0.16, `patch ${index} floats above the rice`);
+    assert.ok(patchUp.dot(expectedNormal) > 0.995, `patch ${index} does not follow the mound normal`);
+  }
   station.dispose();
 });
 

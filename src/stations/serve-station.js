@@ -7,6 +7,11 @@ import { applyPourSample, deriveServingVisual } from './serve-model.js';
 
 const COUNTER_Y = 0.04;
 const PATCH_COUNT = 64;
+const RICE_CENTER_X = 0.45;
+const RICE_BASE_Y = 0.72;
+const RICE_RADIUS = 1.23;
+const RICE_Y_SCALE = 0.52;
+const PATCH_FOOTPRINT_RADIUS = RICE_RADIUS * 0.9;
 
 function addMesh(group, geometry, material, position, rotation = null) {
   const mesh = new THREE.Mesh(geometry, material);
@@ -47,12 +52,14 @@ export function createServeStation(context = {}) {
     materials.ceramicAccent,
     [0.45, COUNTER_Y, 0],
   ).name = 'rice-bowl';
-  addMesh(
+  const rice = addMesh(
     group,
-    new THREE.SphereGeometry(1.23, 40, 20, 0, Math.PI * 2, 0, Math.PI / 2),
+    new THREE.SphereGeometry(RICE_RADIUS, 40, 20, 0, Math.PI * 2, 0, Math.PI / 2),
     materials.rice,
-    [0.45, 0.72, 0],
-  ).name = 'rice';
+    [RICE_CENTER_X, RICE_BASE_Y, 0],
+  );
+  rice.name = 'rice';
+  rice.scale.y = RICE_Y_SCALE;
 
   const pouringBowl = addMesh(
     group,
@@ -132,17 +139,40 @@ export function createServeStation(context = {}) {
     const matrix = new THREE.Matrix4();
     const position = new THREE.Vector3();
     const rotation = new THREE.Quaternion();
+    const surfaceRotation = new THREE.Quaternion();
+    const yawRotation = new THREE.Quaternion();
+    const surfaceNormal = new THREE.Vector3();
+    const up = new THREE.Vector3(0, 1, 0);
     const scale = new THREE.Vector3();
+    const moundHeight = RICE_RADIUS * RICE_Y_SCALE;
     patches.count = visual.patchCount;
     for (let index = 0; index < visual.patchCount; index += 1) {
       const angle = index * 2.399963;
       const radius = visual.patchRadius * Math.sqrt((index + 0.5) / Math.max(1, visual.patchCount));
+      let offsetX = visual.patchOffsetX + Math.cos(angle) * radius;
+      let offsetZ = Math.sin(angle) * radius;
+      const distance = Math.hypot(offsetX, offsetZ);
+      if (distance > PATCH_FOOTPRINT_RADIUS) {
+        const clampScale = PATCH_FOOTPRINT_RADIUS / distance;
+        offsetX *= clampScale;
+        offsetZ *= clampScale;
+      }
+      const radialRatio = Math.hypot(offsetX, offsetZ) / RICE_RADIUS;
+      const surfaceHeight = moundHeight * Math.sqrt(Math.max(0, 1 - (radialRatio ** 2)));
+      const lift = 0.055 + ((visual.patchHeight - 0.05) * 0.08) + ((index % 3) * 0.003);
       position.set(
-        0.45 + visual.patchOffsetX + Math.cos(angle) * radius,
-        0.72 + visual.patchHeight + ((index % 3) * 0.018),
-        Math.sin(angle) * radius,
+        RICE_CENTER_X + offsetX,
+        RICE_BASE_Y + surfaceHeight + lift,
+        offsetZ,
       );
-      rotation.setFromEuler(new THREE.Euler(0, angle, (index % 5) * 0.08));
+      surfaceNormal.set(
+        offsetX / (RICE_RADIUS ** 2),
+        surfaceHeight / (moundHeight ** 2),
+        offsetZ / (RICE_RADIUS ** 2),
+      ).normalize();
+      surfaceRotation.setFromUnitVectors(up, surfaceNormal);
+      yawRotation.setFromAxisAngle(surfaceNormal, angle);
+      rotation.multiplyQuaternions(yawRotation, surfaceRotation);
       scale.set(0.13, 0.055, 0.1);
       matrix.compose(position, rotation, scale);
       patches.setMatrixAt(index, matrix);

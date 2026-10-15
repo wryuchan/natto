@@ -4,8 +4,10 @@ import test from 'node:test';
 import {
   Box3,
   Group,
+  Plane,
   PCFShadowMap,
   PerspectiveCamera,
+  Raycaster,
   Vector3,
 } from 'three';
 
@@ -18,6 +20,8 @@ import {
   selectQualityProfile,
 } from '../src/scene/renderer.js';
 import { createKitchenScene } from '../src/scene/kitchen.js';
+import { createCutStation } from '../src/stations/cut-station.js';
+import { createMixStation } from '../src/stations/mix-station.js';
 import { createServeStation } from '../src/stations/serve-station.js';
 
 function makeCanvas(width = 375, height = 500) {
@@ -93,6 +97,23 @@ function boxCorners(box) {
       [box.min.z, box.max.z].map((z) => new Vector3(x, y, z))
     ))
   ));
+}
+
+// Full viewports plus the canvas boxes the shell actually lays out at 375x812 and 1280x800.
+const CANVAS_SIZES = [[375, 812], [1280, 800], [351, 365], [1000, 394]];
+
+function cameraFor(station, width, height) {
+  const descriptor = getCameraDescriptor({ station, width, height });
+  const camera = new PerspectiveCamera(
+    descriptor.fov,
+    width / height,
+    descriptor.near,
+    descriptor.far,
+  );
+  camera.position.fromArray(descriptor.position);
+  camera.lookAt(...descriptor.target);
+  camera.updateMatrixWorld();
+  return camera;
 }
 
 test('quality profiles cap DPR and degrade threads, foam, shadows, then resolution', () => {
@@ -180,6 +201,109 @@ test('portrait and desktop serve cameras target the midpoint between both vessel
     }
   }
   station.dispose();
+});
+
+test('station cameras fill the canvas while keeping every interaction target visible', () => {
+  const makers = {
+    cut: createCutStation,
+    mix: createMixStation,
+    serve: createServeStation,
+  };
+  const objectNames = {
+    cut: ['knife-blade', 'knife-handle', 'transfer-bowl', 'transfer-natto', 'transfer-onion'],
+    mix: ['mix-bowl', 'bowl-rim', 'mix-egg', 'soy-sauce', 'mustard', 'chopstick-1', 'chopstick-2'],
+    serve: ['rice-bowl', 'rice', 'pouring-bowl'],
+  };
+
+  for (const [stationId, makeStationAdapter] of Object.entries(makers)) {
+    const station = makeStationAdapter({
+      camera: new PerspectiveCamera(45, 1, 0.1, 100),
+      dispatch() {},
+    });
+    station.group.updateWorldMatrix(true, true);
+    const objects = objectNames[stationId].map((name) => station.group.getObjectByName(name));
+    const mainBounds = stationId === 'cut'
+      ? new Box3().setFromObject(station.group.children[0])
+      : objects.reduce((bounds, object) => bounds.union(new Box3().setFromObject(object)), new Box3());
+
+    for (const [width, height] of CANVAS_SIZES) {
+      const camera = cameraFor(stationId, width, height);
+      const projectedMain = boxCorners(mainBounds).map((corner) => corner.project(camera));
+      const widthFraction = (
+        Math.max(...projectedMain.map((point) => point.x))
+        - Math.min(...projectedMain.map((point) => point.x))
+      ) / 2;
+      const heightFraction = (
+        Math.max(...projectedMain.map((point) => point.y))
+        - Math.min(...projectedMain.map((point) => point.y))
+      ) / 2;
+      // On very wide canvases the height binds first; filling it counts as filling the frame.
+      assert.ok(
+        widthFraction >= 0.5 || heightFraction >= 0.75,
+        `${stationId} is too small at ${width}x${height}`,
+      );
+      assert.ok(widthFraction <= 0.68, `${stationId} is too large at ${width}x${height}`);
+
+      for (const object of objects) {
+        for (const corner of boxCorners(new Box3().setFromObject(object))) {
+          const projected = corner.project(camera);
+          assert.ok(projected.x >= -1 && projected.x <= 1, `${object.name} is cropped horizontally`);
+          assert.ok(projected.y >= -1 && projected.y <= 1, `${object.name} is cropped vertically`);
+        }
+      }
+    }
+    station.dispose();
+  }
+});
+
+test('counter covers every camera ray and the gradient backdrop texture is disposed', () => {
+  const canvas = makeCanvas(1280, 800);
+  const kitchen = createKitchenScene(canvas, {
+    rendererFactory: () => makeRenderer(canvas),
+    autoStart: false,
+    enableInput: false,
+  });
+  const counter = kitchen.scene.getObjectByName('counter');
+  const backdrop = kitchen.scene.getObjectByName('backdrop');
+
+  assert.ok(counter);
+  assert.ok(backdrop?.material?.map);
+  assert.equal(kitchen.scene.background.getHex(), kitchen.scene.fog.color.getHex());
+
+  const counterBounds = new Box3().setFromObject(counter);
+  const backdropBounds = new Box3().setFromObject(backdrop);
+  const counterPlane = new Plane(new Vector3(0, 1, 0), 0);
+  const backdropPlane = new Plane(new Vector3(0, 0, 1), 24);
+  const raycaster = new Raycaster();
+  const intersection = new Vector3();
+  for (const stationId of ['cut', 'mix', 'serve']) {
+    for (const [width, height] of CANVAS_SIZES) {
+      const camera = cameraFor(stationId, width, height);
+      for (const x of [-1, 1]) {
+        raycaster.setFromCamera({ x, y: -1 }, camera);
+        assert.ok(raycaster.ray.intersectPlane(counterPlane, intersection));
+        assert.ok(intersection.x >= counterBounds.min.x && intersection.x <= counterBounds.max.x);
+        assert.ok(intersection.z >= counterBounds.min.z && intersection.z <= counterBounds.max.z);
+
+        // A steep portrait camera sees only counter at the top edge; either surface means no void.
+        raycaster.setFromCamera({ x, y: 1 }, camera);
+        const hitsCounter = raycaster.ray.intersectPlane(counterPlane, intersection)
+          && intersection.x >= counterBounds.min.x && intersection.x <= counterBounds.max.x
+          && intersection.z >= counterBounds.min.z && intersection.z <= counterBounds.max.z;
+        const hitsBackdrop = raycaster.ray.intersectPlane(backdropPlane, intersection)
+          && intersection.x >= backdropBounds.min.x && intersection.x <= backdropBounds.max.x
+          && intersection.y >= backdropBounds.min.y && intersection.y <= backdropBounds.max.y;
+        assert.ok(hitsCounter || hitsBackdrop, `${stationId} shows a void at ${width}x${height}`);
+      }
+    }
+  }
+
+  let backdropTextureDisposed = false;
+  backdrop.material.map.addEventListener('dispose', () => {
+    backdropTextureDisposed = true;
+  });
+  kitchen.dispose();
+  assert.equal(backdropTextureDisposed, true);
 });
 
 test('renderer resize reads the canvas client box and not window dimensions', () => {

@@ -3,14 +3,22 @@ import * as THREE from 'three';
 const MAX_DEGRADATION_LEVEL = 4;
 const STATION_TARGETS = Object.freeze({
   cut: Object.freeze([0, 0.15, 0]),
-  mix: Object.freeze([0, 0.3, 0]),
+  mix: Object.freeze([0, 0.95, 0]),
   serve: Object.freeze([-0.775, 0.43, 0]),
 });
-const STATION_CAMERA_OFFSETS = Object.freeze({
-  cut: Object.freeze([0, 0, 0]),
-  mix: Object.freeze([0.35, -0.55, 0.15]),
-  serve: Object.freeze([-0.775, -0.4, 3.5]),
+// World-space bounds of each station's visible content. The camera distance is
+// solved per canvas aspect so these bounds fill a fixed share of the canvas.
+const STATION_FRAMES = Object.freeze({
+  cut: Object.freeze({ min: [-2.2, 0, -1.6], max: [2.2, 0.6, 1.6] }),
+  mix: Object.freeze({ min: [-2.25, 0, -1.5], max: [2.15, 2.8, 1.5] }),
+  serve: Object.freeze({ min: [-3.05, 0, -1.75], max: [2.2, 1.45, 1.75] }),
 });
+const CAMERA_VIEWS = Object.freeze({
+  portrait: Object.freeze({ fov: 40, elevation: THREE.MathUtils.degToRad(52) }),
+  landscape: Object.freeze({ fov: 35, elevation: THREE.MathUtils.degToRad(36) }),
+});
+// Largest NDC extent the station bounds may reach horizontally and vertically.
+const FRAME_FILL = Object.freeze({ x: 0.66, y: 0.82 });
 const WORK_SURFACE = Object.freeze({
   minX: -2.2,
   maxX: 2.2,
@@ -86,19 +94,65 @@ export function createPerformanceMonitor({
   };
 }
 
+const fittedPositions = new Map();
+const fitCamera = new THREE.PerspectiveCamera();
+const fitCorner = new THREE.Vector3();
+
+function fitCameraPosition(station, orientation, aspect) {
+  const key = `${station}:${orientation}:${aspect.toFixed(4)}`;
+  const cached = fittedPositions.get(key);
+  if (cached) return cached;
+
+  const frame = STATION_FRAMES[station];
+  const target = STATION_TARGETS[station];
+  const { fov, elevation } = CAMERA_VIEWS[orientation];
+  const direction = [0, Math.sin(elevation), Math.cos(elevation)];
+  const positionAt = (distance) => target.map((value, index) => value + direction[index] * distance);
+  const overflow = (distance) => {
+    fitCamera.fov = fov;
+    fitCamera.aspect = aspect;
+    fitCamera.near = 0.1;
+    fitCamera.far = 100;
+    fitCamera.position.fromArray(positionAt(distance));
+    fitCamera.lookAt(...target);
+    fitCamera.updateMatrixWorld();
+    fitCamera.updateProjectionMatrix();
+    let worst = 0;
+    for (const x of [frame.min[0], frame.max[0]]) {
+      for (const y of [frame.min[1], frame.max[1]]) {
+        for (const z of [frame.min[2], frame.max[2]]) {
+          fitCorner.set(x, y, z).project(fitCamera);
+          worst = Math.max(worst, Math.abs(fitCorner.x) / FRAME_FILL.x, Math.abs(fitCorner.y) / FRAME_FILL.y);
+        }
+      }
+    }
+    return worst;
+  };
+
+  let near = 2;
+  let far = 60;
+  for (let step = 0; step < 32; step += 1) {
+    const middle = (near + far) / 2;
+    if (overflow(middle) > 1) near = middle;
+    else far = middle;
+  }
+  const position = Object.freeze(positionAt(far));
+  if (fittedPositions.size > 64) fittedPositions.clear();
+  fittedPositions.set(key, position);
+  return position;
+}
+
 export function getCameraDescriptor({ station = 'cut', width = 1, height = 1 } = {}) {
   const orientation = height > width ? 'portrait' : 'landscape';
-  const target = STATION_TARGETS[station] ?? STATION_TARGETS.cut;
-  const offset = STATION_CAMERA_OFFSETS[station] ?? STATION_CAMERA_OFFSETS.cut;
-  const portrait = orientation === 'portrait';
-  const basePosition = portrait ? [0, 8.4, 8.8] : [0, 6.8, 9.6];
+  const stationId = Object.hasOwn(STATION_TARGETS, station) ? station : 'cut';
+  const aspect = finite(width) && finite(height) && width > 0 && height > 0 ? width / height : 1;
 
   return Object.freeze({
-    station: Object.hasOwn(STATION_TARGETS, station) ? station : 'cut',
+    station: stationId,
     orientation,
-    position: Object.freeze(basePosition.map((value, index) => value + offset[index])),
-    target: Object.freeze([...target]),
-    fov: portrait ? (station === 'serve' ? 54 : 48) : 38,
+    position: fitCameraPosition(stationId, orientation, aspect),
+    target: Object.freeze([...STATION_TARGETS[stationId]]),
+    fov: CAMERA_VIEWS[orientation].fov,
     near: 0.1,
     far: 100,
     worldScale: 1,

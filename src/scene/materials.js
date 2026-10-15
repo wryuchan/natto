@@ -8,49 +8,89 @@ function makeDataTexture(color) {
   return texture;
 }
 
+// One tile spans WOOD_TILE_WORLD_SIZE world units; the counter repeats it at that scale.
+export const WOOD_TILE_WORLD_SIZE = 4;
+const WOOD_FALLBACK = { r: 184, g: 160, b: 136 };
+const PLANK_TONES = ['#c3a07a', '#bb9771', '#c8a781', '#be9b74'];
+
 export function createWoodTexture() {
   if (typeof document === 'undefined' || typeof document.createElement !== 'function') {
-    return makeDataTexture({ r: 174, g: 119, b: 74 });
+    return makeDataTexture(WOOD_FALLBACK);
   }
 
+  const size = 256;
   const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = 256;
+  canvas.width = size;
+  canvas.height = size;
   const context = canvas.getContext('2d');
-  if (!context) return makeDataTexture({ r: 174, g: 119, b: 74 });
+  if (!context) return makeDataTexture(WOOD_FALLBACK);
 
-  const gradient = context.createLinearGradient(0, 0, 256, 256);
-  gradient.addColorStop(0, '#c78d58');
-  gradient.addColorStop(0.5, '#ad7044');
-  gradient.addColorStop(1, '#d49b63');
-  context.fillStyle = gradient;
-  context.fillRect(0, 0, 256, 256);
-  context.globalAlpha = 0.22;
-  context.strokeStyle = '#704428';
-  context.lineWidth = 2;
-  for (let y = 12; y < 256; y += 18) {
+  // Every term is periodic over the tile so repeated tiles meet without seams.
+  const plankWidth = size / PLANK_TONES.length;
+  PLANK_TONES.forEach((tone, plank) => {
+    context.fillStyle = tone;
+    context.fillRect(plank * plankWidth, 0, plankWidth, size);
+  });
+  context.globalAlpha = 0.16;
+  context.strokeStyle = '#7a5b3e';
+  context.lineWidth = 1;
+  for (let x = 4; x < size; x += 8) {
+    const phase = (x / size) * Math.PI * 6;
     context.beginPath();
-    for (let x = 0; x <= 256; x += 8) {
-      const wave = Math.sin((x + y) * 0.065) * 3;
-      if (x === 0) context.moveTo(x, y + wave);
-      else context.lineTo(x, y + wave);
+    for (let y = 0; y <= size; y += 4) {
+      const wave = Math.sin(((y / size) * Math.PI * 4) + phase) * 1.5;
+      if (y === 0) context.moveTo(x + wave, y);
+      else context.lineTo(x + wave, y);
     }
     context.stroke();
   }
+  context.globalAlpha = 0.35;
+  context.fillStyle = '#8a6a4b';
+  for (let plank = 1; plank < PLANK_TONES.length; plank += 1) {
+    context.fillRect(plank * plankWidth - 0.5, 0, 1, size);
+  }
+  context.fillRect(0, 0, 1, size);
+  context.globalAlpha = 1;
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(3, 2);
+  texture.anisotropy = 4;
+  return texture;
+}
+
+function createBackdropTexture() {
+  if (typeof document === 'undefined' || typeof document.createElement !== 'function') {
+    return makeDataTexture({ r: 216, g: 205, b: 190 });
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 32;
+  canvas.height = 256;
+  const context = canvas.getContext('2d');
+  if (!context) return makeDataTexture({ r: 216, g: 205, b: 190 });
+
+  const gradient = context.createLinearGradient(0, 0, 0, 256);
+  gradient.addColorStop(0, '#eee8de');
+  gradient.addColorStop(0.58, '#ddd2c3');
+  gradient.addColorStop(1, '#c9b8a1');
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
 }
 
 export function createKitchenMaterials() {
   const woodTexture = createWoodTexture();
+  const backdropTexture = createBackdropTexture();
   return {
     woodTexture,
-    counter: new THREE.MeshStandardMaterial({ map: woodTexture, color: 0xf2d0a2, roughness: 0.78 }),
+    backdropTexture,
+    backdrop: new THREE.MeshBasicMaterial({ map: backdropTexture, fog: false }),
+    counter: new THREE.MeshStandardMaterial({ map: woodTexture, color: 0xffffff, roughness: 0.8 }),
     board: new THREE.MeshStandardMaterial({ color: 0xe9c58f, roughness: 0.68 }),
     ceramic: new THREE.MeshStandardMaterial({ color: 0xfff8e9, roughness: 0.42 }),
     ceramicAccent: new THREE.MeshStandardMaterial({ color: 0x315f68, roughness: 0.44 }),
@@ -72,4 +112,3 @@ export function disposeKitchenMaterials(materials) {
     value.dispose?.();
   }
 }
-
