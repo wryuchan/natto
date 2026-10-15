@@ -226,6 +226,21 @@ test('result and collection renderers create accessible output and route user ac
   assert.deepEqual(actions.slice(-2), ['close', 'reset']);
 });
 
+test('result model localizes a keyboard-focusable local license link', () => {
+  const root = fakeRoot();
+  const result = buildResultModel(finishedState(), emptySave(), 'en');
+
+  renderResults(root, result);
+
+  assert.equal(result.copy.licenses, 'Licenses');
+  const licenseLinks = descendants(root).filter((node) =>
+    node.tagName === 'A' && node.href === './licenses.html'
+  );
+  assert.equal(licenseLinks.length, 1);
+  assert.equal(licenseLinks[0].textContent, result.copy.licenses);
+  assert.notEqual(licenseLinks[0].getAttribute('tabindex'), '-1');
+});
+
 test('replay creates a fresh GameState while saved collection data remains untouched', () => {
   const save = emptySave();
   save.achievements.homestyle_bowl = {

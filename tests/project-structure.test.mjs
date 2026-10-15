@@ -84,6 +84,19 @@ test('license page credits Three.js and links its vendored license', async () =>
   assert.match(html, /href=["']\.\/vendor\/three\/LICENSE["']/i);
 });
 
+test('application header links locally to licenses with a button-sized focusable target', async () => {
+  const [html, css] = await Promise.all([
+    read('index.html'),
+    read('styles/app.css'),
+  ]);
+  const licenseLink = html.match(/<a\b[^>]*href=["']\.\/licenses\.html["'][^>]*>/i)?.[0] ?? '';
+
+  assert.notEqual(licenseLink, '');
+  assert.doesNotMatch(licenseLink, /\btarget\s*=|\btabindex=["']-1["']/i);
+  assert.match(licenseLink, /\bclass=["'][^"']*\blink-control\b[^"']*["']/i);
+  assert.match(css, /\.link-control\s*\{[^}]*min-block-size:\s*44px[^}]*min-inline-size:\s*44px/is);
+});
+
 test('mobile shell keeps a playable canvas and allows document scrolling', async () => {
   const css = await read('styles/app.css');
   const mobileRule = css.match(

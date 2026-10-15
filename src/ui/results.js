@@ -43,6 +43,7 @@ export function buildResultModel(state, previousSave = {}, locale = 'en') {
       playAgain: t('results.playAgain'),
       collection: t('results.collection'),
       share: t('results.share'),
+      licenses: t('results.licenses'),
       returnHome: t('results.returnHome'),
     },
   };
@@ -131,7 +132,10 @@ export function renderResults(root, model, callbacks = {}) {
   const home = document.createElement('a');
   home.href = '../';
   home.textContent = model.copy.returnHome;
-  actions.append(home);
+  const licenses = document.createElement('a');
+  licenses.href = './licenses.html';
+  licenses.textContent = model.copy.licenses;
+  actions.append(licenses, home);
   panel.append(actions);
   root.replaceChildren(panel);
   return panel;

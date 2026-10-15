@@ -60,6 +60,7 @@ const ja = {
     playAgain: 'もう一度',
     collection: '称号一覧',
     share: 'Xでシェア',
+    licenses: 'ライセンス',
     returnHome: 'wataryuu.comへ戻る',
     locked: '未獲得',
     unlockedOn: '{date}に獲得',

@@ -60,6 +60,7 @@ const en = {
     playAgain: 'Play again',
     collection: 'Title collection',
     share: 'Share on X',
+    licenses: 'Licenses',
     returnHome: 'Return to wataryuu.com',
     locked: 'Locked',
     unlockedOn: 'Unlocked on {date}',

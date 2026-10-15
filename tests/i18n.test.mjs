@@ -65,6 +65,7 @@ test('both locales contain every approved copy category and title name and hint'
     'confirm.transferToRice.body',
     'confirm.finish.body',
     'results.heading',
+    'results.licenses',
     'scores.cutting',
     'scores.mixing',
     'scores.taste',

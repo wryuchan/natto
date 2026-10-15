@@ -42,6 +42,22 @@ button:focus-visible {
   outline-offset: 2px;
 }
 
+.link-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: 44px;
+  min-inline-size: 44px;
+  padding: 0.55rem 0.75rem;
+  color: #1f6a62;
+  line-height: 1.2;
+}
+
+.link-control:focus-visible {
+  outline: 3px solid #1f6a62;
+  outline-offset: 2px;
+}
+
 button[disabled] {
   cursor: not-allowed;
   opacity: 0.52;
@@ -351,7 +367,8 @@ dialog::backdrop {
     align-items: flex-start;
   }
 
-  .app-tools button {
+  .app-tools button,
+  .app-tools .link-control {
     flex: 1 1 auto;
   }
 
