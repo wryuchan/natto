@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { Box3, PerspectiveCamera } from 'three';
+
 import { createAppController } from '../src/app-controller.js';
 import { createInitialGameState } from '../src/core/game-state.js';
 import { reduceGameState } from '../src/core/state-machine.js';
@@ -9,6 +11,7 @@ import {
   applyPourSample,
   deriveServingVisual,
 } from '../src/stations/serve-model.js';
+import { createServeStation } from '../src/stations/serve-station.js';
 
 const initialServing = () => ({
   transferredRatio: 0,
@@ -146,6 +149,26 @@ test('green onion alone cannot count as natto reaching the rice', () => {
 
   assert.equal(transferred, state);
   assert.equal(reduceGameState(state, { type: 'FINISH' }), state);
+});
+
+test('serving vessels meet the counter and rice stays inside while cresting the rim', () => {
+  const station = createServeStation({
+    camera: new PerspectiveCamera(45, 1, 0.1, 100),
+    dispatch() {},
+  });
+  station.group.updateWorldMatrix(true, true);
+  const riceBowlBox = new Box3().setFromObject(station.group.getObjectByName('rice-bowl'));
+  const pouringBowlBox = new Box3().setFromObject(station.group.getObjectByName('pouring-bowl'));
+  const riceBox = new Box3().setFromObject(station.group.getObjectByName('rice'));
+
+  assert.ok(Math.abs(riceBowlBox.min.y - 0.04) < 1e-6);
+  assert.ok(Math.abs(pouringBowlBox.min.y - 0.04) < 1e-6);
+  assert.ok(riceBox.min.x > riceBowlBox.min.x);
+  assert.ok(riceBox.max.x < riceBowlBox.max.x);
+  assert.ok(riceBox.min.z > riceBowlBox.min.z);
+  assert.ok(riceBox.max.z < riceBowlBox.max.z);
+  assert.ok(riceBox.max.y > riceBowlBox.max.y);
+  station.dispose();
 });
 
 test('default kitchen installs the bounded serving adapter and visible spill projection', () => {

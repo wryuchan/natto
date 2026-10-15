@@ -120,6 +120,13 @@ export function createServeStation(context = {}) {
     return { x: point.x, y: point.z };
   };
 
+  const groundPouringBowl = () => {
+    pouringBowl.position.y = COUNTER_Y;
+    pouringBowl.updateWorldMatrix(true, false);
+    const bounds = new THREE.Box3().setFromObject(pouringBowl);
+    pouringBowl.position.y += COUNTER_Y - bounds.min.y;
+  };
+
   const renderServing = () => {
     const visual = deriveServingVisual(serving);
     const matrix = new THREE.Matrix4();
@@ -144,6 +151,7 @@ export function createServeStation(context = {}) {
     spill.visible = visual.spillVisible;
     spill.scale.set(visual.spillScale, visual.spillScale, visual.spillScale);
     pouringBowl.rotation.z = -0.2 - visual.bowlTilt;
+    groundPouringBowl();
   };
 
   renderServing();

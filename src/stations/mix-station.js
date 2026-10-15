@@ -188,6 +188,7 @@ export function createMixStation(context = {}) {
   ]);
   const targets = [...owners.keys()];
   let eggState = { stage: 'whole', added: false };
+  let nattoInBowl = false;
   let mixing = {
     progress: 0,
     circularity: 0,
@@ -228,12 +229,17 @@ export function createMixStation(context = {}) {
     const progress = clamp01(mixing.progress);
     const aeration = clamp01(mixing.aeration);
     const eggBlend = eggState.added ? clamp01((progress - 0.2) / 0.64) : 0;
+    surface.visible = nattoInBowl;
     surfaceMaterial.color.copy(materials.natto.color).lerp(new THREE.Color(0xc68b48), eggBlend * 0.72);
-    yolk.visible = eggState.added && eggBlend < 0.98;
+    yolk.visible = nattoInBowl && eggState.added && eggBlend < 0.98;
     yolkMaterial.opacity = eggState.added ? 1 - eggBlend : 0;
-    const visibleFoam = Math.min(foamLimit, Math.round(foamLimit * aeration));
+    const visibleFoam = nattoInBowl
+      ? Math.min(foamLimit, Math.round(foamLimit * aeration))
+      : 0;
     foam.count = visibleFoam;
-    const visibleThreads = Math.min(threadLimit, Math.round(threadLimit * progress));
+    const visibleThreads = nattoInBowl
+      ? Math.min(threadLimit, Math.round(threadLimit * progress))
+      : 0;
     threads.children.forEach((thread, index) => {
       thread.visible = index < visibleThreads;
     });
@@ -290,9 +296,12 @@ export function createMixStation(context = {}) {
       renderMixing();
     },
     renderState(state) {
-      if (!state?.mixing || !state?.ingredients?.egg) return;
+      if (!state?.mixing || !state?.ingredients?.egg || !state?.ingredients?.natto) return;
       mixing = { ...state.mixing };
-      if (state.ingredients.egg.added) eggState = { stage: 'opened', added: true };
+      nattoInBowl = state.ingredients.natto.inBowl === true;
+      eggState = state.ingredients.egg.added
+        ? { stage: 'opened', added: true }
+        : { stage: 'whole', added: false };
       renderEgg();
       renderMixing();
     },

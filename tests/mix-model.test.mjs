@@ -106,6 +106,7 @@ test('mix station preserves the yolk through 0.20 and blends it only above the t
     dispatch() {},
   });
   const state = createInitialGameState();
+  state.ingredients.natto.inBowl = true;
   state.ingredients.egg.added = true;
   const yolk = station.group.getObjectByName('egg-yolk');
 
@@ -122,6 +123,43 @@ test('mix station preserves the yolk through 0.20 and blends it only above the t
   state.mixing.progress = 1;
   station.renderState(state);
   assert.equal(yolk.visible, false);
+  station.dispose();
+});
+
+test('mix station projects bowl contents idempotently from natto presence', () => {
+  const station = createMixStation({
+    camera: new PerspectiveCamera(45, 1, 0.1, 100),
+    dispatch() {},
+  });
+  const state = createInitialGameState();
+  state.ingredients.egg.added = true;
+  state.mixing.progress = 0.6;
+  state.mixing.aeration = 0.8;
+  const surface = station.group.getObjectByName('natto-surface');
+  const yolk = station.group.getObjectByName('egg-yolk');
+  const foam = station.group.getObjectByName('mix-foam');
+  const threads = station.group.getObjectByName('mix-threads');
+  const visibleThreadCount = () => threads.children.filter(({ visible }) => visible).length;
+
+  station.renderState(state);
+  assert.equal(surface.visible, false);
+  assert.equal(yolk.visible, false);
+  assert.equal(foam.count, 0);
+  assert.equal(visibleThreadCount(), 0);
+
+  state.ingredients.natto.inBowl = true;
+  station.renderState(state);
+  assert.equal(surface.visible, true);
+  assert.equal(yolk.visible, true);
+  assert.ok(foam.count > 0);
+  assert.ok(visibleThreadCount() > 0);
+
+  state.ingredients.natto.inBowl = false;
+  station.renderState(state);
+  assert.equal(surface.visible, false);
+  assert.equal(yolk.visible, false);
+  assert.equal(foam.count, 0);
+  assert.equal(visibleThreadCount(), 0);
   station.dispose();
 });
 
@@ -167,6 +205,7 @@ test('mix station applies degraded visual caps without changing projected game s
     qualityProfile: { threadCount: 72, foamCount: 48 },
   });
   const state = createInitialGameState();
+  state.ingredients.natto.inBowl = true;
   state.mixing.progress = 1;
   state.mixing.aeration = 1;
   const serialized = JSON.stringify(state);

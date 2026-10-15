@@ -4,12 +4,12 @@ const MAX_DEGRADATION_LEVEL = 4;
 const STATION_TARGETS = Object.freeze({
   cut: Object.freeze([0, 0.15, 0]),
   mix: Object.freeze([0, 0.3, 0]),
-  serve: Object.freeze([0, 0.2, 0]),
+  serve: Object.freeze([-0.775, 0.43, 0]),
 });
 const STATION_CAMERA_OFFSETS = Object.freeze({
   cut: Object.freeze([0, 0, 0]),
   mix: Object.freeze([0.35, -0.55, 0.15]),
-  serve: Object.freeze([-0.25, -0.8, 0.45]),
+  serve: Object.freeze([-0.775, -0.4, 3.5]),
 });
 const WORK_SURFACE = Object.freeze({
   minX: -2.2,

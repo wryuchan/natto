@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { Group, PCFShadowMap } from 'three';
+import {
+  Group,
+  PCFShadowMap,
+  PerspectiveCamera,
+  Vector3,
+} from 'three';
 
 import { createAppController } from '../src/app-controller.js';
 import { createInitialGameState } from '../src/core/game-state.js';
@@ -118,6 +123,35 @@ test('portrait and desktop cameras frame the same station coordinate system', ()
   assert.equal(portrait.worldScale, 1);
   assert.equal(desktop.worldScale, 1);
   assert.notDeepEqual(portrait.position, desktop.position);
+});
+
+test('portrait and desktop serve cameras target the midpoint between both vessels', () => {
+  const expectedCenterX = (-2 + 0.45) / 2;
+  const views = [[375, 812], [1280, 800]].map(([width, height]) => {
+    const descriptor = getCameraDescriptor({ station: 'serve', width, height });
+    const camera = new PerspectiveCamera(
+      descriptor.fov,
+      width / height,
+      descriptor.near,
+      descriptor.far,
+    );
+    camera.position.fromArray(descriptor.position);
+    camera.lookAt(...descriptor.target);
+    camera.updateMatrixWorld();
+    return { descriptor, camera };
+  });
+  const [portrait, desktop] = views.map(({ descriptor }) => descriptor);
+
+  assert.equal(portrait.target[0], expectedCenterX);
+  assert.equal(desktop.target[0], expectedCenterX);
+  assert.ok(portrait.target[1] >= 0.04 && portrait.target[1] <= 0.86);
+  assert.ok(desktop.target[1] >= 0.04 && desktop.target[1] <= 0.86);
+  for (const { camera } of views) {
+    const leftEdge = new Vector3(-3.05, 0.04, 0.36).project(camera);
+    const rightEdge = new Vector3(2.17, 0.04, 0).project(camera);
+    assert.ok(leftEdge.x >= -1);
+    assert.ok(rightEdge.x <= 1);
+  }
 });
 
 test('renderer resize reads the canvas client box and not window dimensions', () => {
