@@ -2,6 +2,7 @@ import * as THREE from 'three';
 
 import { STATIONS } from '../core/game-state.js';
 import { createKitchenMaterials, disposeKitchenMaterials } from '../scene/materials.js';
+import { createVesselGeometry } from '../scene/vessels.js';
 import {
   applyEggTap,
   amountFromCondimentHold,
@@ -52,9 +53,15 @@ export function createMixStation(context = {}) {
 
   const bowl = addMesh(
     group,
-    new THREE.CylinderGeometry(1.48, 1.08, 0.88, 40, 1, true),
+    createVesselGeometry({
+      innerRadius: 1.28,
+      outerRadius: 1.48,
+      height: 0.88,
+      footRadius: 1.08,
+      segments: 40,
+    }),
     materials.ceramic,
-    [0, 0.44, 0],
+    [0, 0, 0],
   );
   bowl.name = 'mix-bowl';
   const rim = addMesh(

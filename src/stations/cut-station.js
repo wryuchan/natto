@@ -2,6 +2,7 @@ import * as THREE from 'three';
 
 import { NATTO_STAGES, STATIONS } from '../core/game-state.js';
 import { createKitchenMaterials, disposeKitchenMaterials } from '../scene/materials.js';
+import { createVesselGeometry } from '../scene/vessels.js';
 import { applyKnifeStroke } from './cut-model.js';
 
 const BOARD_Y = 0.15;
@@ -123,9 +124,15 @@ export function createCutStation(context = {}) {
 
   const bowl = addMesh(
     group,
-    new THREE.CylinderGeometry(0.62, 0.48, 0.34, 28, 1, true),
+    createVesselGeometry({
+      innerRadius: 0.52,
+      outerRadius: 0.62,
+      height: 0.34,
+      footRadius: 0.48,
+      segments: 28,
+    }),
     materials.ceramicAccent,
-    [0, 0.25, -1.18],
+    [0, BOARD_Y, -1.18],
   );
   bowl.name = 'transfer-bowl';
   const nattoTransfer = addMesh(

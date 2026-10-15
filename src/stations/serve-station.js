@@ -2,6 +2,7 @@ import * as THREE from 'three';
 
 import { STATIONS } from '../core/game-state.js';
 import { createKitchenMaterials, disposeKitchenMaterials } from '../scene/materials.js';
+import { createVesselGeometry } from '../scene/vessels.js';
 import { applyPourSample, deriveServingVisual } from './serve-model.js';
 
 const COUNTER_Y = 0.04;
@@ -36,9 +37,15 @@ export function createServeStation(context = {}) {
 
   addMesh(
     group,
-    new THREE.CylinderGeometry(1.72, 1.16, 0.82, 40, 1, true),
+    createVesselGeometry({
+      innerRadius: 1.52,
+      outerRadius: 1.72,
+      height: 0.82,
+      footRadius: 1.16,
+      segments: 40,
+    }),
     materials.ceramicAccent,
-    [0.45, 0.4, 0],
+    [0.45, COUNTER_Y, 0],
   ).name = 'rice-bowl';
   addMesh(
     group,
@@ -49,9 +56,15 @@ export function createServeStation(context = {}) {
 
   const pouringBowl = addMesh(
     group,
-    new THREE.CylinderGeometry(1.03, 0.8, 0.66, 36, 1, true),
+    createVesselGeometry({
+      innerRadius: 0.83,
+      outerRadius: 1.03,
+      height: 0.66,
+      footRadius: 0.8,
+      segments: 36,
+    }),
     materials.ceramic,
-    [-2, 0.72, 0.36],
+    [-2, COUNTER_Y, 0.36],
     [0, 0, -0.2],
   );
   pouringBowl.name = 'pouring-bowl';

@@ -13,6 +13,7 @@ import {
   selectQualityProfile,
 } from './renderer.js';
 import { createKitchenMaterials, disposeKitchenMaterials } from './materials.js';
+import { createVesselGeometry } from './vessels.js';
 
 const STATION_IDS = Object.freeze([STATIONS.CUT, STATIONS.MIX, STATIONS.SERVE]);
 
@@ -35,15 +36,33 @@ function createPlaceholderStation(id, materials) {
     addMesh(group, new THREE.BoxGeometry(2.3, 0.08, 0.12), materials.metal, [-0.4, 0.35, 0.9], [0, 0.12, 0]);
     addMesh(group, new THREE.CapsuleGeometry(0.13, 0.75, 5, 10), materials.darkWood, [1.05, 0.34, 0.9], [0, 0, Math.PI / 2]);
   } else if (id === STATIONS.MIX) {
-    addMesh(group, new THREE.CylinderGeometry(1.45, 1.05, 0.85, 40, 1, true), materials.ceramic, [0, 0.45, 0]);
+    addMesh(group, createVesselGeometry({
+      innerRadius: 1.25,
+      outerRadius: 1.45,
+      height: 0.85,
+      footRadius: 1.05,
+      segments: 40,
+    }), materials.ceramic, [0, 0, 0]);
     addMesh(group, new THREE.CylinderGeometry(0.055, 0.055, 3.2, 12), materials.darkWood, [-0.2, 1.15, 0], [0.2, 0, -0.28]);
     addMesh(group, new THREE.CylinderGeometry(0.055, 0.055, 3.2, 12), materials.darkWood, [0.2, 1.15, 0], [0.2, 0, -0.18]);
     addMesh(group, new THREE.CylinderGeometry(0.35, 0.42, 1.1, 24), materials.soy, [-1.8, 0.55, 0.2]);
     addMesh(group, new THREE.CylinderGeometry(0.35, 0.42, 0.7, 24), materials.mustard, [1.8, 0.35, 0.2]);
   } else {
-    addMesh(group, new THREE.CylinderGeometry(1.7, 1.15, 0.8, 40, 1, true), materials.ceramicAccent, [0, 0.4, 0]);
+    addMesh(group, createVesselGeometry({
+      innerRadius: 1.5,
+      outerRadius: 1.7,
+      height: 0.8,
+      footRadius: 1.15,
+      segments: 40,
+    }), materials.ceramicAccent, [0, 0, 0]);
     addMesh(group, new THREE.SphereGeometry(1.22, 40, 20, 0, Math.PI * 2, 0, Math.PI / 2), materials.rice, [0, 0.72, 0]);
-    addMesh(group, new THREE.CylinderGeometry(1.05, 0.82, 0.66, 36, 1, true), materials.ceramic, [-2, 0.65, 0.35], [0, 0, -0.2]);
+    addMesh(group, createVesselGeometry({
+      innerRadius: 0.85,
+      outerRadius: 1.05,
+      height: 0.66,
+      footRadius: 0.82,
+      segments: 36,
+    }), materials.ceramic, [-2, 0, 0.35], [0, 0, -0.2]);
   }
 
   return {
