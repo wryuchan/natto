@@ -39,7 +39,7 @@ test('application shell uses Japanese metadata and only local runtime URLs', asy
   assert.match(html, /<title>[^<]*納豆[^<]*<\/title>/i);
   assert.match(html, /<meta[^>]+name=["']description["'][^>]+content=["'][^"']+["']/i);
   assert.match(html, /<link[^>]+rel=["']canonical["'][^>]+href=["']https:\/\/wataryuu\.com\/natto\/["']/i);
-  assert.match(html, /<meta[^>]+name=["']robots["'][^>]+content=["']index, follow["']/i);
+  assert.match(html, /<meta[^>]+name=["']robots["'][^>]+content=["']noindex, follow["']/i);
   assert.match(html, /<meta[^>]+property=["']og:type["'][^>]+content=["']website["']/i);
   assert.match(html, /<meta[^>]+property=["']og:url["'][^>]+content=["']https:\/\/wataryuu\.com\/natto\/["']/i);
   assert.match(html, /<meta[^>]+property=["']og:image["'][^>]+content=["']https:\/\/wataryuu\.com\/natto\/assets\/images\/ogp\.jpg["']/i);
